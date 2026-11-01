@@ -1,12 +1,9 @@
 import type { Metadata } from 'next';
-import { Inter, Instrument_Serif, JetBrains_Mono } from 'next/font/google';
 import { Cabecalho } from './_componentes/Cabecalho';
 import { Rodape } from './_componentes/Rodape';
 import './site.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
-const serif = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['italic', 'normal'], variable: '--font-instrument-serif', display: 'swap' });
-const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['300', '400'], variable: '--font-jetbrains-mono', display: 'swap' });
+// Fontes (Inter, Instrument Serif, JetBrains Mono) já vêm do layout raiz da Base.
 
 export const metadata: Metadata = {
   title: { default: 'ATENA SOLUTION — atendimento, vendas e conteúdo com IA', template: '%s · ATENA SOLUTION' },
@@ -16,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function LayoutSite({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`site ${inter.variable} ${serif.variable} ${mono.variable}`}>
+    <div className="site">
       <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 s-btn s-btn-secundario">Pular para o conteúdo</a>
       <Cabecalho />
       <main id="conteudo">{children}</main>
