@@ -50,3 +50,26 @@ describe('webhook da Meta', () => {
     expect(e).toMatchObject({ tipo: 'mensagem', phoneNumberId: 'PN9', wamid: 'x1', texto: 'teste' })
   })
 })
+
+import { conferirAssinaturaWebhook } from '@/lib/atendimento/webhook'
+import { RepoBanco } from '@/lib/atendimento/repo-banco'
+import { BancoMemoria } from '@/lib/dados/banco'
+
+describe('assinatura do webhook por empresa', () => {
+  it('usa o App Secret da empresa quando ela tem app próprio; senão o global', async () => {
+    const repo = new RepoBanco(new BancoMemoria())
+    await repo.salvarConexao({ empresaId: 'e1', phoneNumberId: 'PN1', wabaId: 'W', tokenCifrado: 't', appSecretCifrado: 'cifrado:seg-e1', conectadoEm: '', modelos: {} })
+    await repo.salvarConexao({ empresaId: 'e2', phoneNumberId: 'PN2', wabaId: 'W', tokenCifrado: 't', conectadoEm: '', modelos: {} })
+    const decifrar = (x: string) => x.replace('cifrado:', '')
+    const conferir = (pnid: string, segredo: string, global?: string) => {
+      const corpo = webhookDeTexto({ phoneNumberId: pnid, de: '55', texto: 'oi', wamid: 'w' })
+      const bruto = JSON.stringify(corpo)
+      return conferirAssinaturaWebhook({ bruto, corpo, cabecalho: assinar(bruto, segredo), repo, decifrar, segredoGlobal: global, simulando: false })
+    }
+    expect((await conferir('PN1', 'seg-e1', 'global')).ok).toBe(true)
+    expect((await conferir('PN1', 'global', 'global')).ok).toBe(false)
+    expect((await conferir('PN2', 'global', 'global')).ok).toBe(true)
+    expect((await conferir('PN2', 'outro', 'global')).ok).toBe(false)
+    expect((await conferir('PN2', 'x')).ok).toBe(false) // sem segredo nenhum em produção: recusa
+  })
+})

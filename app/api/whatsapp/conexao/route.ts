@@ -14,22 +14,32 @@ export const GET = rota(undefined, async (req, { sessao }) => {
   const { repo } = await depsAtendimento()
   const c = await repo.conexao(sessao.empresaId)
   const urlWebhook = new URL('/api/whatsapp/webhook', req.url).toString()
-  if (!c) return Response.json({ conectado: false, urlWebhook, simulado: simulando() })
+  const podeVerToken = sessao.papel === 'dono' || sessao.papel === 'gestor'
+  if (!c) return Response.json({ conectado: false, urlWebhook, tokenVerificacao: podeVerToken ? (process.env.WHATSAPP_TOKEN_VERIFICACAO ?? null) : null, simulado: simulando() })
   let token = ''
   try {
     token = mascarar(decifrarToken(c.tokenCifrado))
   } catch {
     token = '(não foi possível ler — conecte de novo)'
   }
-  const { tokenCifrado: _t, ...pub } = c
+  const { tokenCifrado: _t, appSecretCifrado, ...pub } = c
   void _t
-  return Response.json({ conectado: true, conexao: { ...pub, token }, urlWebhook, simulado: simulando() })
+  const podeVer = sessao.papel === 'dono' || sessao.papel === 'gestor'
+  return Response.json({
+    conectado: true,
+    conexao: { ...pub, token, temAppSecret: !!appSecretCifrado },
+    urlWebhook,
+    // a empresa precisa dele pra cadastrar o webhook no app dela na Meta
+    tokenVerificacao: podeVer ? (process.env.WHATSAPP_TOKEN_VERIFICACAO ?? null) : null,
+    simulado: simulando(),
+  })
 })
 
 interface Pedido {
   phoneNumberId?: string
   wabaId?: string
   token?: string
+  appSecret?: string
   modelos?: ModelosAprovados
 }
 
@@ -53,6 +63,7 @@ export const POST = rota(['dono', 'gestor'], async (req, { sessao }) => {
       phoneNumberId,
       wabaId,
       tokenCifrado,
+      ...(p.appSecret?.trim() ? { appSecretCifrado: cifrarToken(p.appSecret.trim()) } : atual?.appSecretCifrado ? { appSecretCifrado: atual.appSecretCifrado } : {}),
       numeroExibicao: conferido.numero,
       nomeVerificado: conferido.nome,
       conectadoEm: atual?.conectadoEm ?? new Date().toISOString(),

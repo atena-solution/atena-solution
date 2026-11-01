@@ -107,8 +107,8 @@ export class RepoBanco implements RepoAtendimento {
   async conexao(id: string) {
     const pub = await this.b.obter<Omit<ConexaoWhatsApp, 'tokenCifrado'>>(this.e(id, 'atendimento', 'conexao'))
     if (!pub) return null
-    const seg = await this.b.obter<{ tokenCifrado: string }>(juntar('segredos', `whatsapp_${id}`))
-    return { ...pub, tokenCifrado: seg?.tokenCifrado ?? '' }
+    const seg = await this.b.obter<{ tokenCifrado: string; appSecretCifrado?: string }>(juntar('segredos', `whatsapp_${id}`))
+    return { ...pub, tokenCifrado: seg?.tokenCifrado ?? '', ...(seg?.appSecretCifrado ? { appSecretCifrado: seg.appSecretCifrado } : {}) }
   }
   async salvarConexao(c: ConexaoWhatsApp) {
     const indice = juntar('whatsappNumeros', seguro(c.phoneNumberId))
@@ -116,8 +116,8 @@ export class RepoBanco implements RepoAtendimento {
     if (dono && dono.empresaId !== c.empresaId) throw new Error('Esse número já está conectado em outra empresa.')
     const anterior = await this.conexao(c.empresaId)
     if (anterior && anterior.phoneNumberId !== c.phoneNumberId) await this.b.apagar(juntar('whatsappNumeros', seguro(anterior.phoneNumberId)))
-    const { tokenCifrado, ...pub } = c
-    await this.b.gravar(juntar('segredos', `whatsapp_${c.empresaId}`), { tokenCifrado })
+    const { tokenCifrado, appSecretCifrado, ...pub } = c
+    await this.b.gravar(juntar('segredos', `whatsapp_${c.empresaId}`), { tokenCifrado, ...(appSecretCifrado ? { appSecretCifrado } : {}) })
     await this.b.gravar(this.e(c.empresaId, 'atendimento', 'conexao'), pub)
     await this.b.gravar(indice, { empresaId: c.empresaId })
   }

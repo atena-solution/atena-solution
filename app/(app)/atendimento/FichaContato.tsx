@@ -5,11 +5,9 @@ import { Bot, CalendarDays, ExternalLink, StickyNote } from 'lucide-react'
 import { Avatar, Selo } from '@/app/ui'
 import { formatarTelefone, tempoRelativo } from '@/lib/ui/formato'
 import { etapasDaEmpresa } from '@/lib/contatos/funil'
-import { NOME_STATUS } from '@/lib/agenda/horarios'
+import { NOME_STATUS, TOM_STATUS } from '@/lib/agenda/horarios'
 import { useSessao } from '@/lib/sessao'
 import type { DetalheConversa } from './_lib/tempoReal'
-
-const TOM_STATUS = { marcado: 'acento', confirmado: 'sucesso', compareceu: 'neutro', faltou: 'erro', cancelado: 'neutro' } as const
 
 export function FichaContato({ detalhe, fuso, semCabecalho }: { detalhe: DetalheConversa; fuso: string; semCabecalho?: boolean }) {
   const { empresa } = useSessao()

@@ -118,6 +118,8 @@ export interface ConexaoWhatsApp {
   phoneNumberId: string
   wabaId: string
   tokenCifrado: string
+  /** App Secret do app da Meta da empresa (cifrado), se ela usa app próprio. Sem ele vale o WHATSAPP_APP_SECRET da Atena. */
+  appSecretCifrado?: string
   numeroExibicao?: string
   nomeVerificado?: string
   conectadoEm: string
