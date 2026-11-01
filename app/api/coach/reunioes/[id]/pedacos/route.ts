@@ -1,4 +1,4 @@
-// POST multipart: audio (Blob), trilha, indice, duracaoSeg. Guarda no Storage, transcreve e salva o andamento.
+// POST multipart: audio (Blob), trilha, indice, duracaoSeg, inicioSeg (opcional). Guarda no Storage, transcreve e salva o andamento.
 import { armazenamento, autenticar, repositorio, responder } from '@/lib/coach/servidor';
 import { ErroCoach, receberPedaco } from '@/lib/coach/servico';
 import { transcreverPedaco } from '@/lib/integracoes/gemini';
@@ -23,6 +23,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         trilha: String(form.get('trilha')) as Trilha,
         indice: Number(form.get('indice')),
         duracaoSeg: Number(form.get('duracaoSeg')) || undefined,
+        inicioSeg: form.get('inicioSeg') !== null && Number.isFinite(Number(form.get('inicioSeg'))) ? Math.max(0, Number(form.get('inicioSeg'))) : undefined,
         audio: bytes,
         mime: audio.type || 'audio/webm',
       },
