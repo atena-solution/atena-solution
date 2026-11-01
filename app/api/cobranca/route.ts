@@ -1,13 +1,18 @@
 import { rota } from '@/lib/api/rota';
 import { depsCobranca } from '@/lib/cobranca';
-import { lerAcesso } from '@/lib/cobranca/servico';
+import { iniciarTeste, lerAcesso } from '@/lib/cobranca/servico';
 import { modoSimulado } from '@/lib/cobranca/asaas';
 import { CONFIG_PLANOS } from '@/lib/planos/config';
 import { calcularPreco } from '@/lib/planos/preco';
 
 /** Situação do plano da empresa logada: fase, aviso, abas, saldo, extrato e pagamentos. */
-export const GET = rota(undefined, async (_req, { sessao }) => {
+export const GET = rota(undefined, async (_req, { sessao, dados }) => {
   const d = await depsCobranca();
+  // Empresa criada por outro caminho (onboarding da Base, demo): começa o teste contado da data de criação.
+  if (!(await d.repo.obterAssinatura(sessao.empresaId))) {
+    const empresa = await dados.obterEmpresa();
+    if (empresa) await iniciarTeste({ ...d, agora: () => empresa.criadoEm || new Date().toISOString() }, sessao.empresaId);
+  }
   const [assinatura, situacao, saldo] = await Promise.all([
     d.repo.obterAssinatura(sessao.empresaId),
     lerAcesso(d, sessao.empresaId),

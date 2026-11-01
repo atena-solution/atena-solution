@@ -142,7 +142,7 @@
 
 /* Formulários do cadastro/onboarding */
 .s-campo { display: grid; gap: 6px; }
-.s-campo label { font-size: 0.85rem; font-weight: 600; }
+.s-campo .s-rotulo { font-size: 0.85rem; font-weight: 600; }
 .s-campo input, .s-campo select, .s-campo textarea { width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--s-borda-forte); background: var(--s-superficie); color: var(--s-texto); font: inherit; transition: border-color 150ms ease, box-shadow 150ms ease; }
 .s-campo textarea { min-height: 96px; resize: vertical; }
 .s-campo input:focus, .s-campo select:focus, .s-campo textarea:focus { outline: none; border-color: var(--s-violeta); box-shadow: 0 0 0 3px rgba(112, 72, 232, 0.18); }

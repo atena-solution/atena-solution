@@ -19,8 +19,7 @@ const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 function Campo({ rotulo, erro, dica, children }: { rotulo: string; erro?: string; dica?: string; children: React.ReactNode }) {
   return (
     <div className="s-campo">
-      <label>{rotulo}</label>
-      {children}
+      <label className="grid gap-1.5"><span className="s-rotulo">{rotulo}</span>{children}</label>
       {erro ? <span className="s-erro" role="alert">{erro}</span> : dica ? <span className="s-dica">{dica}</span> : null}
     </div>
   );
@@ -85,7 +84,7 @@ function Assistente() {
   }
 
   return (
-    <div className="s-container max-w-3xl py-10 md:py-14">
+    <div className="s-container max-w-3xl pb-24 pt-10 md:pt-14">
       <div className="mb-8 flex items-center justify-between gap-4">
         <p className="s-sobretitulo">Criar sua conta</p>
         {temEmpresa && passo !== 'pronto' && <Link href="/inicio" className="text-sm s-texto-2 underline underline-offset-4">Parar e continuar depois</Link>}
@@ -294,7 +293,7 @@ function PassoTreinar({ segmento, onSalvar, onPular, ocupado }: { segmento: stri
           </div>
         </fieldset>
         <div className="s-campo">
-          <label>{perguntas[2].pergunta}</label>
+          <span className="s-rotulo">{perguntas[2].pergunta}</span>
           <span className="s-dica">{perguntas[2].dica}</span>
           <div className="mt-2 grid gap-3">
             {faq.map((f, i) => (

@@ -94,8 +94,8 @@ export function PainelAdmin() {
                 <td className="px-4 py-3"><p className="font-medium">{e.nome}</p><p className="text-xs text-texto-3">{e.segmento} · {e.membros} pessoa(s) · desde {formatarDataBR(e.criadoEm)}</p></td>
                 <td className="px-3 py-3">{e.planoId ?? '—'}</td>
                 <td className="px-3 py-3"><Selo tom={FASE[e.fase].tom}>{FASE[e.fase].rotulo}</Selo>{e.liberadoAte && <p className="mt-1 text-xs text-texto-3">até {formatarDataBR(e.liberadoAte)}</p>}</td>
-                <td className="px-3 py-3 text-right font-mono">{r(e.receitaMensal)}</td>
-                <td className="px-3 py-3 text-right font-mono" title={e.modelosSemPreco.length ? `Sem preço: ${e.modelosSemPreco.join(', ')}` : undefined}>{r(e.custoIA)}{e.modelosSemPreco.length ? '*' : ''}</td>
+                <td className="px-3 py-3 text-right font-mono whitespace-nowrap">{r(e.receitaMensal)}</td>
+                <td className="px-3 py-3 text-right font-mono whitespace-nowrap" title={e.modelosSemPreco.length ? `Sem preço: ${e.modelosSemPreco.join(', ')}` : undefined}>{r(e.custoIA)}{e.modelosSemPreco.length ? '*' : ''}</td>
                 <td className={cx('px-3 py-3 text-right font-mono', e.receitaMensal > 0 && e.margem.pct < 50 && 'text-atencao')}>{e.receitaMensal > 0 ? `${e.margem.pct}%` : '—'}</td>
                 <td className="px-3 py-3 text-right font-mono">{e.creditos}</td>
                 <td className="px-4 py-3"><Selo tom={SAUDE[e.saude.cor]} ponto>{e.saude.cor === 'ok' ? 'OK' : e.saude.motivos[0]}</Selo></td>
