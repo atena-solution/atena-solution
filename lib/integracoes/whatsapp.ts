@@ -75,7 +75,6 @@ export interface EventoStatus {
 
 export type EventoWhatsApp = EventoMensagem | EventoStatus
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export function lerWebhook(corpo: any): EventoWhatsApp[] {
   const eventos: EventoWhatsApp[] = []
   if (!corpo || corpo.object !== 'whatsapp_business_account' || !Array.isArray(corpo.entry)) return eventos
@@ -128,7 +127,6 @@ export function lerWebhook(corpo: any): EventoWhatsApp[] {
   }
   return eventos
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /** Monta um corpo de webhook igual ao da Meta (usado no modo simulado e nos testes). */
 export function webhookDeTexto(p: { phoneNumberId: string; de: string; nome?: string; texto: string; wamid?: string; em?: Date }) {

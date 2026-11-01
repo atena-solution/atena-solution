@@ -61,3 +61,25 @@ describe('token cifrado', () => {
     expect(mascarar('EAAGsegredo123')).toBe('EAAG…o123')
   })
 })
+
+import { validarTreino, preencherMensagemRapida } from '@/lib/atendimento/treino'
+import { treinoPadrao } from '@/lib/atendimento/repositorio'
+
+describe('treinar a IA', () => {
+  it('valida e limpa', () => {
+    const r = validarTreino({ ...treinoPadrao('e1'), perguntas: [{ pergunta: ' Abre sábado? ', resposta: 'Sim, até 13h' }, { pergunta: '', resposta: '' }], mensagensRapidas: [{ atalho: '/Pix', texto: 'Chave pix: 123' }] })
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.treino.perguntas).toEqual([{ pergunta: 'Abre sábado?', resposta: 'Sim, até 13h' }])
+      expect(r.treino.mensagensRapidas[0].atalho).toBe('pix')
+    }
+  })
+  it('aponta erros', () => {
+    const r = validarTreino({ ...treinoPadrao('e1'), nomeAssistente: '', perguntas: [{ pergunta: 'x', resposta: '' }], linkAvaliacao: 'g.page', avisoHumanoMin: 0 })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(Object.keys(r.erros).sort()).toEqual(['avisoHumanoMin', 'linkAvaliacao', 'nomeAssistente', 'perguntas.0'])
+  })
+  it('mensagem rápida com variáveis', () => {
+    expect(preencherMensagemRapida('Fica na {endereco}', { endereco: 'Rua A, 1' })).toBe('Fica na Rua A, 1')
+  })
+})
