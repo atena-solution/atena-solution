@@ -83,6 +83,18 @@ describe('layout da arte', () => {
     expect(l.camadas.some((c) => c.tipo === 'imagem' && c.src === 'logo.png')).toBe(true);
     expect(l.avisos).toEqual([]);
   });
+  it('todo texto tem contraste AA com o que está atrás dele', () => {
+    for (const fundo of ['#FFFFFF', '#0E1116', '#808080', '#E8A93B', '#3B5BDB']) {
+      for (const modelo of ['promocao', 'novidade', 'depoimento'] as const) {
+        const l = montarLayout({ modelo, formato: '4:5', marca, textos: { titulo: 'Título', subtitulo: 'Sub' }, fundo: 'f', corFundoTexto: fundo });
+        const t = l.camadas.find((c) => c.tipo === 'texto' && c.linhas[0] === 'Título');
+        const veu = l.camadas.find((c) => c.tipo === 'retangulo' && c.cor.startsWith('rgba') && !c.degrade);
+        if (t?.tipo !== 'texto') throw new Error();
+        const atras = veu?.tipo === 'retangulo' ? (veu.cor.startsWith('rgba(14') ? '#0E1116' : '#F7F5F0') : fundo;
+        expect(contraste(t.cor, atras)).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
   it('texto contrasta com o fundo informado', () => {
     const l = montarLayout({ modelo: 'novidade', formato: '1:1', marca, textos: { titulo: 'Chegou' }, fundo: 'f', corFundoTexto: '#FAFAFA' });
     const titulo = l.camadas.find((c) => c.tipo === 'texto' && c.linhas[0] === 'Chegou');
@@ -96,5 +108,11 @@ describe('layout da arte', () => {
     expect(() => montarLayout({ modelo: 'antes-depois', formato: '1:1', marca, textos: { titulo: 'x' }, fundo: '', fotosReais: ['a'] })).toThrow();
     const l = montarLayout({ modelo: 'antes-depois', formato: '1:1', marca, textos: { titulo: 'x' }, fundo: '', fotosReais: ['a', 'b'] });
     expect(l.camadas.filter((c) => c.tipo === 'imagem').map((c) => (c.tipo === 'imagem' ? c.rotulo : ''))).toEqual(expect.arrayContaining(['ANTES', 'DEPOIS']));
+    // texto claro na faixa escura e abaixo das fotos
+    const fotos = l.camadas.filter((c) => c.tipo === 'imagem');
+    const baseFotos = Math.max(...fotos.map((c) => (c.tipo === 'imagem' ? c.y + c.altura : 0)));
+    const titulo = l.camadas.find((c) => c.tipo === 'texto' && c.linhas[0] === 'x');
+    expect(titulo?.tipo === 'texto' && titulo.cor).toBe('#FFFFFF');
+    expect(titulo!.y).toBeGreaterThanOrEqual(baseFotos);
   });
 });

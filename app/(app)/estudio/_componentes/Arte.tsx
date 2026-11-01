@@ -94,11 +94,12 @@ function desenhar(ctx: CanvasRenderingContext2D, c: Camada, imgs: Map<string, HT
       ctx.font = `700 ${t}px Inter, sans-serif`;
       const w = ctx.measureText(c.rotulo).width + t * 1.4;
       ctx.fillStyle = 'rgba(14,17,22,.72)';
-      arredondado(ctx, c.x + t * 0.6, c.y + t * 0.6, w, t * 1.9, t);
+      const yR = c.y + c.altura - t * 2.5;
+      arredondado(ctx, c.x + t * 0.6, yR, w, t * 1.9, t);
       ctx.fill();
       ctx.fillStyle = '#fff';
       ctx.textBaseline = 'middle';
-      ctx.fillText(c.rotulo, c.x + t * 1.3, c.y + t * 0.6 + t * 0.95);
+      ctx.fillText(c.rotulo, c.x + t * 1.3, yR + t * 0.95);
     }
   } else if (c.tipo === 'retangulo') {
     if (c.degrade) {

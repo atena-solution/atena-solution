@@ -31,7 +31,9 @@ async function chamarClaude(system: string, conteudo: string): Promise<string> {
 
 export function simularResposta(p: PedidoLegenda): string {
   const tema = p.tema.trim() || 'novidade da casa';
-  const curto = tema.length > 38 ? tema.slice(0, 37).trimEnd() + '…' : tema;
+  // Título curto: parte antes de "—"/":" e corta em palavra inteira.
+  const base = tema.split(/\s[—–:-]\s|:\s/)[0];
+  const curto = base.length <= 38 ? base : base.slice(0, 38).replace(/\s+\S*$/, '');
   const porModelo = {
     promocao: { sub: p.oferta || 'Condição especial por tempo limitado', cta: 'Garanta o seu' },
     novidade: { sub: `Chegou na ${p.nomeEmpresa}`, cta: 'Saiba mais' },

@@ -160,13 +160,13 @@ export function simularImagens(p: PedidoImagem): ResultadoImagem {
     const y = (h - lado) / 2;
     const produto = ref
       ? `<image href="${ref}" x="${x}" y="${y}" width="${lado}" height="${lado}" preserveAspectRatio="xMidYMid meet"/>`
-      : `<rect x="${x + lado * 0.2}" y="${y + lado * 0.2}" width="${lado * 0.6}" height="${lado * 0.6}" rx="40" fill="${acento}" opacity="0.85"/>`;
+      : `<circle cx="${w * 0.3}" cy="${h * 0.3}" r="${w * 0.22}" fill="${p.cores?.secundaria ?? '#7048E8'}" opacity="0.18"/><circle cx="${w * 0.62}" cy="${h * 0.22}" r="${w * 0.12}" fill="${acento}" opacity="0.22"/>`;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
 <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>
 <radialGradient id="s" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#000" stop-opacity="0.22"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>
 <rect width="${w}" height="${h}" fill="url(#g)"/>
 <circle cx="${w * 0.85}" cy="${h * 0.12}" r="${w * 0.35}" fill="${acento}" opacity="0.07"/>
-<ellipse cx="${w / 2}" cy="${y + lado * 0.98}" rx="${lado * 0.42}" ry="${lado * 0.06}" fill="url(#s)"/>
+${ref ? `<ellipse cx="${w / 2}" cy="${y + lado * 0.98}" rx="${lado * 0.42}" ry="${lado * 0.06}" fill="url(#s)"/>` : ''}
 ${produto}
 </svg>`;
     return svgParaDataUrl(svg);

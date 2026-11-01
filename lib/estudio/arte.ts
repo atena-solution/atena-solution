@@ -176,17 +176,19 @@ export function montarLayout(p: PedidoLayout): { largura: number; altura: number
   const fonteT = p.marca.fontes.titulo;
   const fonteX = p.marca.fontes.texto;
 
-  if (p.modelo === 'antes-depois') {
+  const antesDepois = p.modelo === 'antes-depois';
+  const alturaFotos = Math.round(H * 0.6);
+  if (antesDepois) {
     if (!p.fotosReais || p.fotosReais.length < 2) throw new Error('Antes/depois precisa de 2 fotos reais da empresa.');
-    const meio = Math.round(H * 0.42);
     camadas.push({ tipo: 'retangulo', x: 0, y: 0, largura: W, altura: H, cor: '#0E1116' });
-    camadas.push({ tipo: 'imagem', src: p.fotosReais[0], x: 0, y: 0, largura: W / 2 - 4, altura: H - meio + 200, ajuste: 'cobrir', rotulo: 'ANTES' });
-    camadas.push({ tipo: 'imagem', src: p.fotosReais[1], x: W / 2 + 4, y: 0, largura: W / 2 - 4, altura: H - meio + 200, ajuste: 'cobrir', rotulo: 'DEPOIS' });
+    camadas.push({ tipo: 'imagem', src: p.fotosReais[0], x: 0, y: 0, largura: W / 2 - 3, altura: alturaFotos, ajuste: 'cobrir', rotulo: 'ANTES' });
+    camadas.push({ tipo: 'imagem', src: p.fotosReais[1], x: W / 2 + 3, y: 0, largura: W / 2 - 3, altura: alturaFotos, ajuste: 'cobrir', rotulo: 'DEPOIS' });
   } else {
     camadas.push({ tipo: 'imagem', src: p.fundo, x: 0, y: 0, largura: W, altura: H, ajuste: 'cobrir' });
   }
 
-  const fundoTexto = p.corFundoTexto ?? p.marca.cores.primaria;
+  // No antes/depois o texto fica na faixa escura sólida abaixo das fotos.
+  const fundoTexto = antesDepois ? '#0E1116' : p.corFundoTexto ?? p.marca.cores.primaria;
   const leitura = escolherCorTexto(fundoTexto, ['#FFFFFF', '#0E1116'], CONTRASTE_MINIMO_GRANDE);
   const corTexto = leitura.cor;
 
@@ -205,12 +207,15 @@ export function montarLayout(p: PedidoLayout): { largura: number; altura: number
 
   const centro = p.modelo === 'depoimento';
   let y = centro ? Math.round((H - blocoAltura) / 2) : Math.round(H - m - blocoAltura);
+  if (antesDepois) y = Math.max(alturaFotos + m, y);
   const alinhamento = centro ? 'center' : 'left';
   const x = centro ? W / 2 : m;
 
   // Véu atrás do texto quando o contraste não basta (ou sempre um degradê suave no rodapé).
-  if (leitura.veu || p.modelo === 'antes-depois') {
-    camadas.push({ tipo: 'retangulo', x: 0, y: y - m, largura: W, altura: H - y + m, cor: leitura.veu ?? 'rgba(14,17,22,0.7)' });
+  if (antesDepois) {
+    // faixa já é sólida
+  } else if (leitura.veu) {
+    camadas.push({ tipo: 'retangulo', x: 0, y: y - m, largura: W, altura: H - y + m, cor: leitura.veu });
   } else if (!centro) {
     const escuro = luminancia(corTexto) > 0.5;
     camadas.push({ tipo: 'retangulo', x: 0, y: y - m * 2, largura: W, altura: H - y + m * 2, cor: 'transparent', degrade: escuro ? ['rgba(14,17,22,0)', 'rgba(14,17,22,0.55)'] : ['rgba(247,245,240,0)', 'rgba(247,245,240,0.6)'] });
@@ -227,7 +232,9 @@ export function montarLayout(p: PedidoLayout): { largura: number; altura: number
   }
 
   if (centro) {
-    camadas.push({ tipo: 'retangulo', x: m * 0.6, y: y - m, largura: W - m * 1.2, altura: blocoAltura + m * 2, cor: leitura.veu ?? 'rgba(14,17,22,0.45)', raio: 28 });
+    // Cartão atrás do depoimento: escuro se o texto é claro, claro se o texto é escuro.
+    const cartao = leitura.veu ?? (luminancia(corTexto) > 0.5 ? 'rgba(14,17,22,0.45)' : 'rgba(247,245,240,0.6)');
+    camadas.push({ tipo: 'retangulo', x: m * 0.6, y: y - m, largura: W - m * 1.2, altura: blocoAltura + m * 2, cor: cartao, raio: 28 });
   }
 
   camadas.push({ tipo: 'texto', linhas: tituloAj.linhas, x, y, tamanho: tituloAj.tamanho, alturaLinha: tituloAj.alturaLinha, cor: corTexto, fonte: fonteT, peso: 400, italico: fonteT === 'Instrument Serif', alinhamento, largura: larguraTexto });
