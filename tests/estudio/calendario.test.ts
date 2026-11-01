@@ -58,8 +58,10 @@ describe('status da pauta', () => {
     const volta = mudarStatusPauta(pub, 'arte-gerada', 'x');
     expect(volta.publicadoEm).toBeUndefined();
   });
-  it('publicado não volta direto a rascunho', () => {
+  it('publicado volta a rascunho só se não tem arte', () => {
     const pub = mudarStatusPauta(p, 'publicado', 'x');
-    expect(() => mudarStatusPauta(pub, 'rascunho', 'x')).toThrow();
+    expect(mudarStatusPauta(pub, 'rascunho', 'y').status).toBe('rascunho');
+    const comArte = mudarStatusPauta(mudarStatusPauta(p, 'arte-gerada', 'x', 'c1'), 'publicado', 'x');
+    expect(() => mudarStatusPauta(comArte, 'rascunho', 'x')).toThrow();
   });
 });

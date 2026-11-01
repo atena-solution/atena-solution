@@ -175,18 +175,19 @@ export function sugerirMes(opts: {
 const TRANSICOES: Record<StatusPauta, StatusPauta[]> = {
   rascunho: ['arte-gerada', 'publicado'],
   'arte-gerada': ['publicado', 'rascunho'],
-  publicado: ['arte-gerada'],
+  publicado: ['arte-gerada', 'rascunho'], // rascunho só se ainda não tem arte
 };
 
 export function mudarStatusPauta(p: Pauta, novo: StatusPauta, quando: string, criacaoId?: string): Pauta {
   if (p.status === novo) return p;
   if (!TRANSICOES[p.status].includes(novo)) throw new Error(`Não dá para ir de "${p.status}" para "${novo}".`);
   if (novo === 'arte-gerada' && !(criacaoId ?? p.criacaoId)) throw new Error('Gere a arte antes.');
+  if (p.status === 'publicado' && novo === 'rascunho' && p.criacaoId) throw new Error('Este post já tem arte: volte para "arte pronta".');
   return {
     ...p,
     status: novo,
     criacaoId: criacaoId ?? p.criacaoId,
-    publicadoEm: novo === 'publicado' ? quando : novo === 'arte-gerada' ? undefined : p.publicadoEm,
+    publicadoEm: novo === 'publicado' ? quando : undefined,
   };
 }
 
