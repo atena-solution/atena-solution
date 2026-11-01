@@ -1,0 +1,87 @@
+rules_version = '2';
+
+// Regras da Atena. Espelho de lib/auth/permissoes.ts (ESCRITA_POR_COLECAO) — mude os dois juntos.
+// O servidor usa o Admin SDK (não passa por aqui); estas regras protegem o acesso direto do navegador
+// (ex.: caixa de entrada do Atendimento em tempo real).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() { return request.auth != null; }
+    function membro(empresaId) {
+      return get(/databases/$(database)/documents/empresas/$(empresaId)/membros/$(request.auth.uid)).data;
+    }
+    function ativo(empresaId) {
+      return logado()
+        && exists(/databases/$(database)/documents/empresas/$(empresaId)/membros/$(request.auth.uid))
+        && membro(empresaId).ativo == true;
+    }
+    function papelEm(empresaId, papeis) {
+      return ativo(empresaId) && membro(empresaId).papel in papeis;
+    }
+
+    // Usuário só lê o próprio documento; escrita só pelo servidor.
+    match /usuarios/{uid} {
+      allow read: if logado() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Índice global de convites: só o servidor.
+    match /convites/{email} {
+      allow read, write: if false;
+    }
+
+    match /empresas/{empresaId} {
+      allow read: if ativo(empresaId);
+      allow create, delete: if false; // criação pelo servidor (onboarding)
+      allow update: if papelEm(empresaId, ['dono', 'gestor'])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.plano == resource.data.plano; // plano/créditos só pelo servidor (cobrança)
+
+      match /membros/{uid} {
+        allow read: if ativo(empresaId);
+        allow write: if papelEm(empresaId, ['dono', 'gestor']);
+      }
+      match /convites/{email} {
+        allow read, write: if papelEm(empresaId, ['dono', 'gestor']);
+      }
+      match /servicos/{id} {
+        allow read: if ativo(empresaId);
+        allow write: if papelEm(empresaId, ['dono', 'gestor']);
+      }
+      match /profissionais/{id} {
+        allow read: if ativo(empresaId);
+        allow write: if papelEm(empresaId, ['dono', 'gestor']);
+      }
+      match /contatos/{id} {
+        allow read: if ativo(empresaId);
+        allow write: if papelEm(empresaId, ['dono', 'gestor', 'atendente', 'vendedor'])
+          && (request.resource == null || request.resource.data.empresaId == empresaId);
+      }
+      match /atividades/{id} {
+        allow read: if ativo(empresaId);
+        allow write: if papelEm(empresaId, ['dono', 'gestor', 'atendente', 'vendedor']);
+      }
+      match /agendamentos/{id} {
+        allow read: if ativo(empresaId);
+        allow write: if papelEm(empresaId, ['dono', 'gestor', 'atendente', 'vendedor']);
+      }
+      match /conversas/{id=**} {
+        allow read: if ativo(empresaId);
+        allow write: if papelEm(empresaId, ['dono', 'gestor', 'atendente']);
+      }
+      match /reunioes/{id=**} {
+        allow read: if ativo(empresaId);
+        allow write: if papelEm(empresaId, ['dono', 'gestor', 'vendedor']);
+      }
+      match /criacoes/{id=**} {
+        allow read: if ativo(empresaId);
+        allow write: if papelEm(empresaId, ['dono', 'gestor', 'atendente', 'vendedor']);
+      }
+      // Qualquer outra subcoleção: só leitura para membros; escrita pelo servidor.
+      match /{outra}/{id=**} {
+        allow read: if ativo(empresaId);
+        allow write: if false;
+      }
+    }
+  }
+}
