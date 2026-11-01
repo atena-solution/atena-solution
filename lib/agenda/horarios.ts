@@ -165,3 +165,6 @@ export const NOME_STATUS: Record<StatusAgendamento, string> = {
   faltou: 'Faltou',
   cancelado: 'Cancelado',
 };
+
+/** Tom do selo de cada status na tela. */
+export const TOM_STATUS = { marcado: 'acento', confirmado: 'sucesso', compareceu: 'neutro', faltou: 'erro', cancelado: 'neutro' } as const;

@@ -54,11 +54,10 @@ export function Modal({ aberto, aoFechar, titulo, descricao, children, rodape, t
     };
   }, [aberto, aoFechar]);
 
-  if (!aberto || typeof document === 'undefined') return null;
-
   const folha = tipo === 'folha';
+  if (!aberto || typeof document === 'undefined') return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex">
+    <div className={cx('fixed inset-0 z-50 flex', !folha && 'items-center justify-center p-4')}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={aoFechar} aria-hidden />
       <div
         ref={caixa}
@@ -70,7 +69,7 @@ export function Modal({ aberto, aoFechar, titulo, descricao, children, rodape, t
           'entrar relative flex max-h-full w-full flex-col border border-borda bg-superficie shadow-2xl',
           folha
             ? 'mt-auto max-h-[92dvh] rounded-t-2xl md:mt-0 md:ml-auto md:h-full md:max-h-none md:max-w-lg md:rounded-none md:rounded-l-2xl'
-            : cx('m-auto max-h-[90dvh] rounded-2xl mx-4', larguras[largura]),
+            : cx('max-h-[90dvh] rounded-2xl', larguras[largura]),
         )}
       >
         <div className="flex items-start justify-between gap-4 border-b border-borda px-5 py-4">

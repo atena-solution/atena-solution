@@ -110,3 +110,18 @@ export function etiquetasUsadas(contatos: Contato[]): string[] {
 export function linhaDoTempo(atividades: Atividade[], contatoId: string): Atividade[] {
   return atividades.filter((a) => a.contatoId === contatoId).sort((a, b) => b.quando.localeCompare(a.quando));
 }
+
+/**
+ * Para onde o contato anda no funil quando algo acontece na agenda.
+ * Só avança (nunca puxa de volta quem já é Cliente) e só se a etapa existir na empresa.
+ */
+export function etapaAposAgenda(etapaAtual: string, evento: 'marcou' | 'compareceu', etapas: EtapaFunil[]): string | null {
+  const ordem = etapas.map((e) => e.id);
+  const alvo = evento === 'marcou' ? 'agendado' : 'compareceu';
+  if (!ordem.includes(alvo)) return null;
+  const iAtual = ordem.indexOf(etapaAtual);
+  const iAlvo = ordem.indexOf(alvo);
+  if (etapaAtual === 'perdido') return alvo; // voltou: reativa
+  if (iAtual === -1 || iAtual < iAlvo) return alvo;
+  return null;
+}
