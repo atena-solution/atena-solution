@@ -9,7 +9,7 @@ const msg = (pnid: string, t: string, wamid?: string) => webhookDeTexto({ phoneN
 
 describe('roteamento e deduplicação', () => {
   it('roteia pelo phone_number_id para a empresa certa', async () => {
-    const amb = ambiente(iaRoteirizada([]))
+    const amb = await ambiente(iaRoteirizada([]))
     const r1 = await receberWebhook(msg('PN1', 'oi'), amb.deps)
     const r2 = await receberWebhook(msg('PN2', 'oi'), amb.deps)
     expect(r1.itens[0].empresaId).toBe('e1')
@@ -21,13 +21,13 @@ describe('roteamento e deduplicação', () => {
     expect(c1?.id).not.toBe(c2?.id)
   })
   it('número desconhecido é ignorado', async () => {
-    const amb = ambiente(iaRoteirizada([]))
+    const amb = await ambiente(iaRoteirizada([]))
     const r = await receberWebhook(msg('PN_X', 'oi'), amb.deps)
     expect(r.itens).toHaveLength(0)
     expect(r.ignorados[0].motivo).toBe('número não conectado')
   })
   it('ignora repetição pelo wamid', async () => {
-    const amb = ambiente(iaRoteirizada([]))
+    const amb = await ambiente(iaRoteirizada([]))
     await receberWebhook(msg('PN1', 'oi', 'wamid.A'), amb.deps)
     const r = await receberWebhook(msg('PN1', 'oi', 'wamid.A'), amb.deps)
     expect(r.ignorados[0].motivo).toBe('repetida')
@@ -39,7 +39,7 @@ describe('roteamento e deduplicação', () => {
 describe('rajada', () => {
   it('3 mensagens seguidas → 1 resposta só', async () => {
     const ia = iaRoteirizada([texto('Oi, Carlos! Temos horário sim. Pra qual serviço?')])
-    const amb = ambiente(ia)
+    const amb = await ambiente(ia)
     const itens = []
     for (const t of ['oi', 'tudo bem?', 'tem horário amanhã?']) {
       itens.push(...(await receberWebhook(msg('PN1', t), amb.deps)).itens)
@@ -55,7 +55,7 @@ describe('rajada', () => {
     expect(textos(amb.enviadas)).toEqual(['Oi, Carlos! Temos horário sim. Pra qual serviço?'])
   })
   it('processar antes da hora reagenda', async () => {
-    const amb = ambiente(iaRoteirizada([]))
+    const amb = await ambiente(iaRoteirizada([]))
     const [i] = (await receberWebhook(msg('PN1', 'oi'), amb.deps)).itens
     const r = await processarItem(i.itemId, i.empresaId, amb.deps)
     expect(r).toEqual({ acao: 'ignorado', motivo: 'cedo demais, reagendado' })
@@ -70,7 +70,7 @@ describe('IA marca horário com ferramentas', () => {
       usarFerramenta('marcar_horario', { servico_id: 'corte', inicio: '2026-11-03T13:00:00.000Z', profissional_id: 'joao' }),
       texto('Prontinho, Carlos! Corte marcado terça às 10:00 com João ✅'),
     ])
-    const amb = ambiente(ia)
+    const amb = await ambiente(ia)
     const [i] = (await receberWebhook(msg('PN1', 'quero cortar amanhã às 10h'), amb.deps)).itens
     amb.avancar(9000)
     const r = await processarItem(i.itemId, i.empresaId, amb.deps)
@@ -92,7 +92,7 @@ describe('IA marca horário com ferramentas', () => {
       usarFerramenta('marcar_horario', { servico_id: 'barba', inicio: '2026-11-03T13:30:00.000Z', profissional_id: 'joao' }),
       texto('Esse horário já está ocupado. Posso te oferecer outro?'),
     ])
-    const amb = ambiente(ia)
+    const amb = await ambiente(ia)
     const [a] = (await receberWebhook(webhookDeTexto({ phoneNumberId: 'PN1', de: '551111', texto: 'barba 10h' }), amb.deps)).itens
     const [b] = (await receberWebhook(webhookDeTexto({ phoneNumberId: 'PN1', de: '552222', texto: 'barba 10h30' }), amb.deps)).itens
     amb.avancar(9000)
@@ -106,7 +106,7 @@ describe('IA marca horário com ferramentas', () => {
   })
 
   it('não remarca/cancela agendamento de outro cliente ou de outra empresa', async () => {
-    const amb = ambiente(iaRoteirizada([]))
+    const amb = await ambiente(iaRoteirizada([]))
     const outro = await amb.repo.criarAgendamentoSeLivre('e2', { contatoId: 'x', servicoId: 'corte', profissionalId: 'joao', inicio: '2026-11-03T13:00:00.000Z', fim: '2026-11-03T13:30:00.000Z', status: 'marcado', criadoPor: 'ia', lembretes: {} })
     const ia = iaRoteirizada([usarFerramenta('cancelar', { agendamento_id: outro!.id, motivo: 'teste' }), texto('não achei')])
     amb.deps.ia = ia
@@ -122,7 +122,7 @@ describe('IA marca horário com ferramentas', () => {
 describe('passar para humano', () => {
   it('reclamação vai direto pra equipe, sem chamar a IA', async () => {
     const ia = iaRoteirizada([])
-    const amb = ambiente(ia)
+    const amb = await ambiente(ia)
     const [i] = (await receberWebhook(msg('PN1', 'que absurdo, fui muito mal atendido'), amb.deps)).itens
     amb.avancar(9000)
     const r = await processarItem(i.itemId, 'e1', amb.deps)
@@ -134,7 +134,7 @@ describe('passar para humano', () => {
   })
   it('a IA pode chamar humano pela ferramenta; depois fica quieta', async () => {
     const ia = iaRoteirizada([usarFerramenta('passar_para_humano', { motivo: 'Pergunta sobre convênio' }), texto('Vou chamar alguém da equipe 🙏')])
-    const amb = ambiente(ia)
+    const amb = await ambiente(ia)
     const [i] = (await receberWebhook(msg('PN1', 'aceita convênio X?'), amb.deps)).itens
     amb.avancar(9000)
     expect((await processarItem(i.itemId, 'e1', amb.deps)).acao).toBe('humano')
@@ -143,7 +143,7 @@ describe('passar para humano', () => {
     expect(await processarItem(j.itemId, 'e1', amb.deps)).toEqual({ acao: 'ignorado', motivo: 'equipe assumiu' })
   })
   it('IA fora do ar → mensagem educada e equipe chamada', async () => {
-    const amb = ambiente({ async criar() { throw new Error('529 overloaded') } })
+    const amb = await ambiente({ async criar() { throw new Error('529 overloaded') } })
     const [i] = (await receberWebhook(msg('PN1', 'oi'), amb.deps)).itens
     amb.avancar(9000)
     expect((await processarItem(i.itemId, 'e1', amb.deps)).acao).toBe('humano')
@@ -154,7 +154,7 @@ describe('passar para humano', () => {
 describe('equipe na caixa de entrada', () => {
   it('assumir pausa a IA; devolver faz a IA responder quem espera', async () => {
     const ia = iaRoteirizada([texto('Oi! Como posso ajudar?')])
-    const amb = ambiente(ia)
+    const amb = await ambiente(ia)
     const [i] = (await receberWebhook(msg('PN1', 'oi'), amb.deps)).itens
     const conv = (await amb.repo.listarConversas('e1'))[0]
     await acaoNaConversa('e1', conv.id, 'u1', 'assumir', amb.deps)
@@ -164,7 +164,7 @@ describe('equipe na caixa de entrada', () => {
     expect(textos(amb.enviadas)).toEqual(['Oi! Como posso ajudar?'])
   })
   it('equipe responde em texto livre na janela; fora dela usa o modelo de retomada', async () => {
-    const amb = ambiente(iaRoteirizada([]))
+    const amb = await ambiente(iaRoteirizada([]))
     await receberWebhook(msg('PN1', 'oi'), amb.deps)
     const conv = (await amb.repo.listarConversas('e1'))[0]
     const r = await enviarDaEquipe('e1', conv.id, 'u1', { texto: 'Oi Carlos, aqui é o Lincoln' }, amb.deps)
@@ -177,7 +177,7 @@ describe('equipe na caixa de entrada', () => {
     expect(amb.enviadas.at(-1)!.conteudo).toMatchObject({ tipo: 'modelo', nome: 'retomada', parametros: ['Ainda precisa?'] })
   })
   it('equipe de uma empresa não acessa conversa de outra', async () => {
-    const amb = ambiente(iaRoteirizada([]))
+    const amb = await ambiente(iaRoteirizada([]))
     await receberWebhook(msg('PN2', 'oi'), amb.deps)
     const convE2 = (await amb.repo.listarConversas('e2'))[0]
     const r = await enviarDaEquipe('e1', convE2.id, 'u1', { texto: 'invasão' }, amb.deps)
@@ -186,7 +186,7 @@ describe('equipe na caixa de entrada', () => {
     expect(await amb.repo.listarConversas('e1')).toHaveLength(0)
   })
   it('resolver e cliente voltar reabre a conversa com a IA', async () => {
-    const amb = ambiente(iaRoteirizada([]))
+    const amb = await ambiente(iaRoteirizada([]))
     await receberWebhook(msg('PN1', 'oi'), amb.deps)
     const conv = (await amb.repo.listarConversas('e1'))[0]
     await acaoNaConversa('e1', conv.id, 'u1', 'assumir', amb.deps)
@@ -200,7 +200,7 @@ describe('equipe na caixa de entrada', () => {
 describe('cron: lembretes, confirmação e avisos', () => {
   it('manda lembrete da véspera uma vez e o "SIM" confirma sem IA', async () => {
     const ia = iaRoteirizada([])
-    const amb = ambiente(ia, new Date('2026-11-02T16:00:00Z')) // seg 13:00
+    const amb = await ambiente(ia, new Date('2026-11-02T16:00:00Z')) // seg 13:00
     await receberWebhook(msg('PN1', 'oi'), amb.deps)
     const contato = (await amb.repo.contatoPorTelefone('e1', tel))!
     const ag = await amb.repo.criarAgendamentoSeLivre('e1', { contatoId: contato.id, servicoId: 'corte', profissionalId: 'joao', inicio: '2026-11-03T15:00:00.000Z', fim: '2026-11-03T15:30:00.000Z', status: 'marcado', criadoPor: 'u', lembretes: {}, criadoEm: '2026-10-20T00:00:00.000Z' })
@@ -214,7 +214,7 @@ describe('cron: lembretes, confirmação e avisos', () => {
     expect(ia.pedidos).toHaveLength(0)
   })
   it('avisa a equipe quando o cliente espera humano', async () => {
-    const amb = ambiente(iaRoteirizada([]))
+    const amb = await ambiente(iaRoteirizada([]))
     const avisos: string[][] = []
     amb.deps.enviarPush = async (p) => { avisos.push(p.uids) }
     const [i] = (await receberWebhook(msg('PN1', 'quero falar com um atendente'), amb.deps)).itens
@@ -230,7 +230,7 @@ describe('cron: lembretes, confirmação e avisos', () => {
 
 describe('IA simulada (SIMULAR=1)', () => {
   it('conversa de ponta a ponta: preço, horários e marcação', async () => {
-    const amb = ambiente(iaSimulada())
+    const amb = await ambiente(iaSimulada())
     const falar = async (t: string) => {
       const [i] = (await receberWebhook(msg('PN1', t), amb.deps)).itens
       amb.avancar(9000)
