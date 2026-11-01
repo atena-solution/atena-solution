@@ -193,23 +193,23 @@ export function criarAsaasSimulado(): AsaasSimulado {
   };
 }
 
-// Instância única por processo (no modo simulado guarda tudo em memória).
-let instancia: ClienteAsaasApi | null = null;
-let simulado: AsaasSimulado | null = null;
+// Instância única por processo (no modo simulado guarda tudo em memória; sobrevive ao recarregar do dev).
+const g = globalThis as unknown as { __atenaAsaas?: ClienteAsaasApi; __atenaAsaasSim?: AsaasSimulado | null };
 
 export function asaas(env: Record<string, string | undefined> = process.env): ClienteAsaasApi {
-  if (instancia) return instancia;
+  if (g.__atenaAsaas) return g.__atenaAsaas;
   if (modoSimulado(env)) {
-    simulado = criarAsaasSimulado();
-    instancia = simulado;
+    g.__atenaAsaasSim = criarAsaasSimulado();
+    g.__atenaAsaas = g.__atenaAsaasSim;
   } else {
-    instancia = criarClienteAsaasReal({ chave: env.ASAAS_API_KEY!, baseUrl: env.ASAAS_BASE_URL });
+    g.__atenaAsaasSim = null;
+    g.__atenaAsaas = criarClienteAsaasReal({ chave: env.ASAAS_API_KEY!, baseUrl: env.ASAAS_BASE_URL });
   }
-  return instancia;
+  return g.__atenaAsaas;
 }
 
 /** Só existe no modo simulado. */
 export function asaasSimulado(): AsaasSimulado | null {
   asaas();
-  return simulado;
+  return g.__atenaAsaasSim ?? null;
 }
