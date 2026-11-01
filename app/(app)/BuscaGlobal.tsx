@@ -115,7 +115,8 @@ export function BuscaGlobal({ aberta, aoFechar }: { aberta: boolean; aoFechar: (
             aria-expanded="true"
             aria-controls="busca-resultados"
             aria-activedescendant={resultados[sel] ? `busca-${resultados[sel].id}` : undefined}
-            className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-texto-3"
+            autoFocus
+            className="h-14 flex-1 bg-transparent text-[15px] outline-none focus-visible:outline-none placeholder:text-texto-3"
           />
           <kbd className="numero rounded border border-borda px-1.5 text-[11px] text-texto-3">Esc</kbd>
         </div>
