@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "regras": "ATUALIZAR_REGRAS=1 vitest run tests/regras-firestore.test.ts",
     "test:watch": "vitest"
   },
   "dependencies": {

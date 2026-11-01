@@ -1,0 +1,24 @@
+rules_version = '2';
+
+// GERADO por lib/auth/regras-dados.ts (npm run regras). Não edite à mão.
+// Arquivos da empresa ficam em empresas/{empresaId}/** (áudios do Coach, imagens do Estúdio).
+// Só membros ativos leem pelo navegador; ninguém escreve direto: envio por URL assinada gerada no servidor
+// (depois do login e da checagem da empresa) e Admin SDK. CONFIRMAR AO VIVO: deploy e regras entre serviços.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function ativo(empresaId) {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/empresas/$(empresaId)/membros/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/empresas/$(empresaId)/membros/$(request.auth.uid)).data.ativo == true;
+    }
+
+    match /empresas/{empresaId}/{caminho=**} {
+      allow read: if ativo(empresaId);
+      allow write: if false;
+    }
+
+    match /{caminho=**} {
+      allow read, write: if false;
+    }
+  }
+}
