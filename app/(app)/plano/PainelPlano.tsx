@@ -37,7 +37,7 @@ const r = (c: number) => formatarReais(c, { semCentavosQuandoInteiro: true });
 
 type Pedido = { tipo: 'plano'; planoId: PlanoId } | { tipo: 'creditos'; pacoteId: string };
 
-export function PainelPlano() {
+export function PainelPlano({ embutido = false }: { embutido?: boolean }) {
   const { sessao, api, recarregar: recarregarSessao } = useSessao();
   const { avisar } = useToast();
   const { dados, erro, recarregar } = useDados<Resposta>('/api/cobranca');
@@ -103,8 +103,8 @@ export function PainelPlano() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
-      <Cabecalho titulo="Plano e créditos" descricao="Seu plano, pagamentos e créditos do Estúdio." />
+    <div className={embutido ? 'w-full' : 'mx-auto w-full max-w-5xl'}>
+      {!embutido && <Cabecalho titulo="Plano e créditos" descricao="Seu plano, pagamentos e créditos do Estúdio." />}
       {dados.simulado && <p className="mb-4 rounded-lg border border-atencao/30 bg-atencao/10 px-3 py-2 text-xs text-atencao">Modo simulado: as faturas abrem uma página de teste (nada é cobrado de verdade).</p>}
 
       {/* Situação */}

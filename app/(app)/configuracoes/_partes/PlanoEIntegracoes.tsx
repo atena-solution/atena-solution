@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { MessageCircle, Mic, Sparkles, CalendarDays, Check, ChevronRight } from 'lucide-react';
 import { Cartao, CabecalhoCartao, CorpoCartao, Selo } from '@/app/ui';
-import { useSessao } from '@/lib/sessao';
+import { PainelPlano } from '../../plano/PainelPlano';
 import type { AbaContratavel } from '@/lib/tipos';
 
 const ABAS: { id: AbaContratavel; nome: string; descricao: string; icone: typeof MessageCircle; cor: string }[] = [
@@ -12,38 +12,9 @@ const ABAS: { id: AbaContratavel; nome: string; descricao: string; icone: typeof
   { id: 'estudio', nome: 'Estúdio', descricao: 'Fotos, vídeos e posts com a sua marca.', icone: Sparkles, cor: 'var(--aba-estudio)' },
 ];
 
-/** Placeholder: a sessão E (planos e cobrança) liga isto ao Asaas. */
+/** Plano e créditos — tela da sessão E (app/(app)/plano), ligada ao Asaas. */
 export function Plano() {
-  const { empresa } = useSessao();
-  if (!empresa) return null;
-  return (
-    <div className="flex flex-col gap-5">
-      <Cartao>
-        <CabecalhoCartao titulo="Seu plano" descricao="Período de teste — a cobrança chega em breve." acao={<Selo tom="acento">Teste</Selo>} />
-        <CorpoCartao className="grid gap-3 sm:grid-cols-3">
-          {ABAS.map((a) => {
-            const tem = empresa.plano.abas.includes(a.id);
-            const Icone = a.icone;
-            return (
-              <div key={a.id} className="rounded-xl border border-borda p-4">
-                <Icone className="size-5" style={{ color: a.cor }} aria-hidden />
-                <p className="mt-3 text-sm font-medium">{a.nome}</p>
-                <p className="mt-0.5 text-xs text-texto-3">{a.descricao}</p>
-                <p className="mt-3 flex items-center gap-1.5 text-xs">{tem ? <><Check className="size-3.5 text-sucesso" /> Ativo</> : <span className="text-texto-3">Não contratado</span>}</p>
-              </div>
-            );
-          })}
-        </CorpoCartao>
-      </Cartao>
-      <Cartao>
-        <CabecalhoCartao titulo="Créditos do Estúdio" descricao="Cada foto ou vídeo gerado usa créditos." />
-        <CorpoCartao>
-          <p className="numero text-4xl">{empresa.plano.creditos}</p>
-          <p className="mt-1 text-sm text-texto-3">créditos disponíveis</p>
-        </CorpoCartao>
-      </Cartao>
-    </div>
-  );
+  return <PainelPlano embutido />;
 }
 
 export function Integracoes() {
