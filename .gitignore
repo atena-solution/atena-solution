@@ -2,3 +2,7 @@ node_modules
 .next
 .env*
 .vercel
+!.env.example
+next-env.d.ts
+*.tsbuildinfo
+coverage
