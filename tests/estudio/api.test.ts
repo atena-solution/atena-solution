@@ -119,14 +119,21 @@ describe('api do Estúdio', () => {
   });
 });
 
-import { repositorio, SALDO_DEMO } from '../../lib/estudio/dependencias';
-describe('modo simulado', () => {
-  it('cada empresa começa com créditos de demonstração separados', async () => {
-    process.env.SIMULAR = '1';
-    const r = repositorio();
-    expect(await r.saldo('demo-a')).toBe(SALDO_DEMO);
+import { RepositorioBanco } from '../../lib/estudio/repositorio-banco';
+import { BancoMemoria } from '../../lib/dados/banco';
+describe('repositório na Base', () => {
+  it('saldo é o plano.creditos da empresa (o mesmo da cobrança) e cada empresa tem o seu', async () => {
+    const b = new BancoMemoria();
+    await b.gravar('empresas/demo-a', { id: 'demo-a', plano: { abas: ['estudio'], creditos: 30 } });
+    await b.gravar('empresas/demo-b', { id: 'demo-b', plano: { abas: ['estudio'], creditos: 30 } });
+    const r = new RepositorioBanco(b);
+    expect(await r.saldo('demo-a')).toBe(30);
     await r.transacaoCreditos('demo-a', ({ saldo }) => ({ saldo: saldo - 2, lancamento: { id: 'x', empresaId: 'demo-a', tipo: 'debito', valor: 2, saldoDepois: saldo - 2, motivo: 'm', quando: 'q' }, resultado: null }));
-    expect(await r.saldo('demo-a')).toBe(SALDO_DEMO - 2);
-    expect(await r.saldo('demo-b')).toBe(SALDO_DEMO);
+    expect(await r.saldo('demo-a')).toBe(28);
+    expect(await r.saldo('demo-b')).toBe(30);
+    expect(((await b.obter('empresas/demo-a')) as { plano: { abas: string[] } }).plano.abas).toEqual(['estudio']);
+    expect(await b.obter('empresas/demo-a/creditos/x')).toMatchObject({ origem: 'uso', quantidade: -2, saldoDepois: 28 });
+    expect(await r.extrato('demo-b')).toEqual([]);
+    await expect(r.transacaoCreditos('demo-a', ({ saldo }) => ({ saldo, lancamento: { id: 'y', empresaId: 'demo-b', tipo: 'debito', valor: 1, saldoDepois: saldo, motivo: 'm', quando: 'q' }, resultado: null }))).rejects.toThrow();
   });
 });

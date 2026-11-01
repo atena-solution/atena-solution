@@ -1,5 +1,6 @@
 // Onde ficam os áudios das reuniões. Todo caminho começa com empresas/{empresaId}/ (isolamento).
 // Real: Firebase Storage (Admin SDK). Simulado: memória do servidor + rota /api/coach/audio.
+import { createHmac, randomBytes } from 'node:crypto';
 import type { getStorage } from 'firebase-admin/storage';
 
 type Bucket = ReturnType<ReturnType<typeof getStorage>['bucket']>;
@@ -19,6 +20,30 @@ export function caminhoDaEmpresa(caminho: string, empresaId: string): boolean {
   return caminho.startsWith(`empresas/${empresaId}/reunioes/`);
 }
 
+/**
+ * Assinatura das URLs do modo simulado (imita a URL assinada do Storage: o <audio> e o PUT direto não mandam login).
+ * HMAC do caminho + validade com um segredo aleatório do processo.
+ */
+const g = globalThis as { __coachSegredoUrl?: string };
+const SEGREDO_URL = (g.__coachSegredoUrl ??= randomBytes(32).toString('hex'));
+
+export function assinarCaminho(caminho: string, acao: 'ler' | 'enviar', validoAte: number, segredo = SEGREDO_URL): string {
+  return createHmac('sha256', segredo).update(`${acao}\n${caminho}\n${validoAte}`).digest('hex').slice(0, 32);
+}
+
+export function urlSimulada(caminho: string, acao: 'ler' | 'enviar', agoraMs = Date.now(), segredo = SEGREDO_URL): string {
+  const ate = agoraMs + 2 * 3600 * 1000;
+  return `/api/coach/audio?c=${encodeURIComponent(caminho)}&a=${acao}&v=${ate}&s=${assinarCaminho(caminho, acao, ate, segredo)}`;
+}
+
+/** Confere a URL assinada do modo simulado. */
+export function conferirUrlSimulada(sp: URLSearchParams, acao: 'ler' | 'enviar', agoraMs = Date.now(), segredo = SEGREDO_URL): string | null {
+  const c = sp.get('c') ?? '';
+  const v = Number(sp.get('v'));
+  if (sp.get('a') !== acao || !Number.isFinite(v) || v < agoraMs) return null;
+  return sp.get('s') === assinarCaminho(c, acao, v, segredo) ? c : null;
+}
+
 export function armazenamentoEmMemoria(): Armazenamento & { _dados: Map<string, { bytes: Uint8Array; mime: string }> } {
   const dados = new Map<string, { bytes: Uint8Array; mime: string }>();
   return {
@@ -29,8 +54,8 @@ export function armazenamentoEmMemoria(): Armazenamento & { _dados: Map<string, 
       if (!x) throw new Error('Arquivo não encontrado.');
       return x.bytes;
     },
-    async urlLeitura(c) { return `/api/coach/audio?c=${encodeURIComponent(c)}`; },
-    async urlEnvio(c, mime) { return { url: `/api/coach/audio?c=${encodeURIComponent(c)}`, metodo: 'PUT', cabecalhos: { 'Content-Type': mime } }; },
+    async urlLeitura(c) { return urlSimulada(c, 'ler'); },
+    async urlEnvio(c, mime) { return { url: urlSimulada(c, 'enviar'), metodo: 'PUT', cabecalhos: { 'Content-Type': mime } }; },
   };
 }
 

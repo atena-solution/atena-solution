@@ -1,51 +1,33 @@
-// Monta as dependências reais ou simuladas do Estúdio (só no servidor).
+// Monta as dependências do Estúdio (só no servidor), em cima da Base:
+// - simulado (SIMULAR=1 / sem Firebase): RepositorioBanco no banco em memória da Base (mesmo saldo da cobrança);
+// - real: RepositorioFirestore com o Admin SDK da Base e as imagens grandes no Storage.
 import { randomUUID } from 'node:crypto';
 import * as imagem from '../integracoes/imagem';
-import { RepositorioMemoria, type OperacaoCredito, type RepositorioEstudio } from './repositorio';
+import { banco, simulando } from '../dados';
+import type { RepositorioEstudio } from './repositorio';
+import { RepositorioBanco } from './repositorio-banco';
 import type { Dependencias } from './servico';
 import { gerarTextoPost } from './texto-ia';
 
-/** Saldo inicial de demonstração no modo simulado. */
-export const SALDO_DEMO = 120;
-
-const g = globalThis as unknown as { __estudioRepoSimulado?: RepositorioMemoria };
-
-class RepositorioDemo extends RepositorioMemoria {
-  private iniciadas = new Set<string>();
-  private async garantir(empresaId: string) {
-    if (this.iniciadas.has(empresaId)) return;
-    this.iniciadas.add(empresaId);
-    await super.transacaoCreditos(empresaId, ({ saldo }) => ({
-      saldo: saldo + SALDO_DEMO,
-      lancamento: { id: `demo-${empresaId}`, empresaId, tipo: 'recarga', valor: SALDO_DEMO, saldoDepois: saldo + SALDO_DEMO, motivo: 'Créditos de demonstração', quando: new Date().toISOString() },
-      resultado: null,
-    }));
-  }
-  override async saldo(empresaId: string) { await this.garantir(empresaId); return super.saldo(empresaId); }
-  override async extrato(empresaId: string) { await this.garantir(empresaId); return super.extrato(empresaId); }
-  override async transacaoCreditos<T>(empresaId: string, op: OperacaoCredito<T>): Promise<T> {
-    await this.garantir(empresaId);
-    return super.transacaoCreditos(empresaId, op);
-  }
+export async function repositorio(): Promise<RepositorioEstudio> {
+  if (simulando()) return new RepositorioBanco(await banco());
+  const [{ RepositorioFirestore }, fb] = await Promise.all([import('./repositorio-firestore'), import('../integracoes/firebase-admin')]);
+  const db = fb.firestoreAdmin() as unknown as import('./repositorio-firestore').FirestoreMinimo;
+  return new RepositorioFirestore(db, async (empresaId, caminho, dataUrl) => {
+    // Upload com token de download do Firebase (URL estável, sem expirar). // CONFIRMAR AO VIVO
+    const m = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
+    if (!m) return dataUrl;
+    const token = randomUUID();
+    const nome = `empresas/${empresaId}/${caminho}`;
+    const bucket = fb.bucketAdmin();
+    await bucket.file(nome).save(Buffer.from(m[2], 'base64'), { contentType: m[1], resumable: false, metadata: { metadata: { firebaseStorageDownloadTokens: token } } });
+    return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(nome)}?alt=media&token=${token}`;
+  });
 }
 
-/** Fornecedor do repositório real: a Base registra aqui o Firestore (ver app/api/estudio/_contexto.ts). */
-let fabricaReal: (() => RepositorioEstudio) | null = null;
-export function registrarRepositorio(f: () => RepositorioEstudio) {
-  fabricaReal = f;
-}
-
-export function repositorio(): RepositorioEstudio {
-  if (process.env.SIMULAR === '1' || !fabricaReal) {
-    if (process.env.SIMULAR !== '1') throw new Error('Repositório do Estúdio não configurado (ou use SIMULAR=1).');
-    return (g.__estudioRepoSimulado ??= new RepositorioDemo());
-  }
-  return fabricaReal();
-}
-
-export function dependencias(): Dependencias {
+export async function dependencias(): Promise<Dependencias> {
   return {
-    repo: repositorio(),
+    repo: await repositorio(),
     gerarImagens: imagem.gerarImagens,
     iniciarVideo: imagem.iniciarVideo,
     consultarVideo: imagem.consultarVideo,

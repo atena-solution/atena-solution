@@ -1,29 +1,31 @@
-// Contexto das rotas do Estúdio: quem está chamando (empresa/usuário) + dados da empresa.
-// ENQUANTO a Base (sessão A) não está na branch: no modo SIMULAR=1 usa uma empresa de demonstração.
-// Na junção: trocar por exigirEmpresa(req, ['dono','gestor']) de lib/auth e ler empresas/{id}.
+// Contexto das rotas do Estúdio: login da Base (exigirEmpresa), dados da empresa e dependências.
 import { NextResponse } from 'next/server';
 import type { EmpresaResumo, Resposta } from '@/lib/estudio/api';
 import { dependencias } from '@/lib/estudio/dependencias';
 import type { Dependencias, Quem } from '@/lib/estudio/servico';
+import { exigirEmpresa } from '@/lib/auth/servidor';
+import { ErroHttp } from '@/lib/auth/erros';
+import { banco } from '@/lib/dados';
+import { daEmpresa } from '@/lib/dados/empresa';
+import type { Sessao } from '@/lib/tipos';
 
 export interface Contexto {
   quem: Quem;
+  sessao: Sessao;
   empresa: EmpresaResumo;
   d: Dependencias;
 }
 
-export class NaoAutorizado extends Error {}
-
 export async function contexto(req: Request): Promise<Contexto> {
-  if (process.env.SIMULAR === '1') {
-    const empresaId = req.headers.get('x-empresa-demo') || 'demo';
-    return {
-      quem: { empresaId, uid: 'demo-uid' },
-      empresa: { nome: 'Barbearia Demo', segmento: 'Barbearia', marca: { cores: { primaria: '#3B5BDB', secundaria: '#7048E8' }, tom: 'próximo e confiante' } },
-      d: dependencias(),
-    };
-  }
-  throw new NaoAutorizado('Login ainda não ligado ao Estúdio.');
+  const sessao = await exigirEmpresa(req);
+  const e = await daEmpresa(await banco(), sessao.empresaId).obterEmpresa();
+  if (!e) throw new ErroHttp(404, 'Empresa não encontrada.');
+  return {
+    quem: { empresaId: sessao.empresaId, uid: sessao.uid },
+    sessao,
+    empresa: { nome: e.nome, segmento: e.segmento, marca: e.marca },
+    d: await dependencias(),
+  };
 }
 
 export function responder(r: Resposta) {
@@ -34,7 +36,7 @@ export async function rota(req: Request, fn: (c: Contexto) => Promise<Resposta>)
   try {
     return responder(await fn(await contexto(req)));
   } catch (e) {
-    if (e instanceof NaoAutorizado) return NextResponse.json({ erro: 'Entre na sua conta.' }, { status: 401 });
+    if (e instanceof ErroHttp) return NextResponse.json({ erro: e.message }, { status: e.status });
     console.error('[estudio]', e);
     return NextResponse.json({ erro: 'Erro inesperado. Tente de novo.' }, { status: 500 });
   }

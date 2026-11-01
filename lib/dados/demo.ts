@@ -14,6 +14,7 @@ export const DEMO = {
   usuarios: [
     { uid: 'demo-dono', email: 'dono@demo.atena', nome: 'Lucas Prado', papel: 'dono' as const, empresa: 'demo' },
     { uid: 'demo-ana', email: 'ana@demo.atena', nome: 'Ana Ribeiro', papel: 'atendente' as const, empresa: 'demo' },
+    { uid: 'demo-bruno', email: 'bruno@demo.atena', nome: 'Bruno Lima', papel: 'vendedor' as const, empresa: 'demo' },
     { uid: 'demo-outro', email: 'outro@demo.atena', nome: 'Rita Campos', papel: 'dono' as const, empresa: 'demo-outra' },
   ],
 };
@@ -29,6 +30,7 @@ export async function semearDemo(b: Banco, agora = new Date()) {
     telefone: '5511987654321',
     endereco: 'Rua das Acácias, 120 — Pinheiros, São Paulo',
     marca: { logoUrl: '', cores: { primaria: '#7048E8', secundaria: '#0F9B8E' }, tom: 'acolhedor, leve e direto' },
+    plano: { ...base.plano, creditos: 120 }, // dá pra testar o Estúdio à vontade
     onboardingConcluido: true,
   };
   await b.gravar(juntar('empresas', empresa.id), empresa);

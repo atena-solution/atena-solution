@@ -1,10 +1,7 @@
-// Chamadas às rotas do Coach a partir do navegador.
-// JUNÇÃO: `cabecalhosAuth` passa a mandar o idToken do Firebase (ou o que a Base definir).
-export async function cabecalhosAuth(): Promise<Record<string, string>> {
-  const w = globalThis as { atenaIdToken?: () => Promise<string | null> };
-  const t = w.atenaIdToken ? await w.atenaIdToken() : null;
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
+// Chamadas às rotas do Coach a partir do navegador — com o mesmo login da Base.
+import { cabecalhosLogin } from '@/lib/sessao';
+
+export const cabecalhosAuth = cabecalhosLogin;
 
 export async function api<T>(url: string, init: RequestInit = {}): Promise<T> {
   const json = init.body && !(init.body instanceof FormData) && typeof init.body === 'string';

@@ -66,7 +66,7 @@ function Formulario() {
       {simulado && (
         <div className="mt-6 rounded-xl border border-atencao/30 bg-atencao/10 px-3.5 py-3 text-[13px] text-texto-2">
           <strong className="text-atencao">Modo simulado.</strong> Qualquer e-mail entra. Use <code>dono@demo.atena</code> para ver a empresa de
-          demonstração, ou um e-mail novo para testar o cadastro.
+          demonstração (<code>ana@demo.atena</code> = atendente, <code>bruno@demo.atena</code> = vendedor), ou um e-mail novo para testar o cadastro.
         </div>
       )}
 

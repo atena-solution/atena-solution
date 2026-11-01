@@ -1,6 +1,6 @@
 'use client';
-// Chamadas do navegador para /api/estudio. Na junção com a Base: incluir o idToken do Firebase
-// (ex.: Authorization: Bearer <token>) usando o helper de auth do cliente da sessão A.
+// Chamadas do navegador para /api/estudio — com o mesmo login da Base.
+import { cabecalhosLogin } from '@/lib/sessao';
 
 export class ErroApi extends Error {
   constructor(public status: number, mensagem: string, public dados: Record<string, unknown> = {}) {
@@ -11,7 +11,7 @@ export class ErroApi extends Error {
 export async function chamar<T = unknown>(url: string, opcoes: { metodo?: string; corpo?: unknown } = {}): Promise<T> {
   const resp = await fetch(url, {
     method: opcoes.metodo ?? (opcoes.corpo !== undefined ? 'POST' : 'GET'),
-    headers: opcoes.corpo !== undefined ? { 'content-type': 'application/json' } : undefined,
+    headers: { ...(await cabecalhosLogin()), ...(opcoes.corpo !== undefined ? { 'content-type': 'application/json' } : {}) },
     body: opcoes.corpo !== undefined ? JSON.stringify(opcoes.corpo) : undefined,
     cache: 'no-store',
   });

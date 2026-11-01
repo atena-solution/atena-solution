@@ -1,37 +1,31 @@
 // Cola entre as rotas (app/api/coach) e as regras (servico.ts). Só servidor.
-// Ponto ÚNICO a ajustar na junção com a Base (sessão A): `autenticar` → exigirEmpresa de lib/auth/servidor.ts.
+// Login, Admin SDK e leitura da empresa são os da Base (lib/auth, lib/integracoes/firebase-admin, lib/dados).
 import type { RepositorioCoach } from './repositorio';
 import { repositorioEmMemoria } from './repositorio';
 import type { Armazenamento } from './armazenamento';
 import { armazenamentoEmMemoria } from './armazenamento';
 import type { Sessao } from './tipos';
 import { ErroCoach } from './servico';
+import { banco, simulando } from '../dados';
+import { juntar } from '../dados/banco';
+import { exigirEmpresa, type ContextoAuth } from '../auth/servidor';
+import type { Empresa, Membro, Papel } from '../tipos';
 
 export function simulandoServidor(): boolean {
-  return process.env.SIMULAR === '1';
+  return simulando();
 }
 
 // ---------- Autenticação ----------
 
-const PAPEIS = ['dono', 'gestor', 'atendente', 'vendedor'] as const;
+/** Papéis que usam o Coach (atendente não). */
+export const PAPEIS_COACH: Papel[] = ['dono', 'gestor', 'vendedor'];
 
-/**
- * Quem está chamando.
- * - SIMULAR=1: sessão de demonstração (pode trocar por cabeçalhos x-sim-uid/x-sim-empresa/x-sim-papel pra testar papéis).
- * - Real: usa o exigirEmpresa da Base (ligar na junção).
- */
-export async function autenticar(req: Request): Promise<Sessao> {
-  if (simulandoServidor()) {
-    const papel = req.headers.get('x-sim-papel') as Sessao['papel'] | null;
-    return {
-      uid: req.headers.get('x-sim-uid') || 'demo-dono',
-      empresaId: req.headers.get('x-sim-empresa') || 'demo',
-      papel: papel && (PAPEIS as readonly string[]).includes(papel) ? papel : 'dono',
-      nome: req.headers.get('x-sim-nome') || 'Você (demo)',
-    };
-  }
-  // JUNÇÃO: trocar por `const s = await exigirEmpresa(req, ['dono','gestor','vendedor'])` (lib/auth/servidor.ts)
-  throw new ErroCoach(501, 'Login ainda não ligado nesta versão. Rode com SIMULAR=1.');
+/** Quem está chamando: o mesmo login da Base (idToken do Firebase ou token simulado). */
+export async function autenticar(req: Request, ctx?: ContextoAuth): Promise<Sessao> {
+  const s = await exigirEmpresa(req, PAPEIS_COACH, ctx);
+  const b = ctx?.banco ?? (await banco());
+  const membro = await b.obter<Membro>(juntar('empresas', s.empresaId, 'membros', s.uid));
+  return { uid: s.uid, empresaId: s.empresaId, papel: s.papel, nome: membro?.nome || s.email };
 }
 
 // ---------- Dados ----------
@@ -40,30 +34,20 @@ type Global = { __coachRepo?: RepositorioCoach; __coachArm?: Armazenamento };
 const g = globalThis as Global;
 
 export async function repositorio(): Promise<RepositorioCoach> {
-  if (simulandoServidor()) return (g.__coachRepo ??= repositorioEmMemoria());
-  const [{ repositorioFirestore }, { getFirestore }] = await Promise.all([import('./repositorio-firestore'), import('firebase-admin/firestore')]);
-  await garantirFirebase();
-  return repositorioFirestore(getFirestore());
+  if (simulando()) return (g.__coachRepo ??= repositorioEmMemoria());
+  const [{ repositorioFirestore }, { firestoreAdmin }] = await Promise.all([import('./repositorio-firestore'), import('../integracoes/firebase-admin')]);
+  return repositorioFirestore(firestoreAdmin());
 }
 
 export async function armazenamento(): Promise<Armazenamento> {
-  if (simulandoServidor()) return (g.__coachArm ??= armazenamentoEmMemoria());
-  const [{ armazenamentoFirebase }, { getStorage }] = await Promise.all([import('./armazenamento'), import('firebase-admin/storage')]);
-  await garantirFirebase();
-  return armazenamentoFirebase(getStorage().bucket(process.env.FIREBASE_STORAGE_BUCKET));
-}
-
-/** JUNÇÃO: a Base deve ter o próprio init do Admin SDK; aqui é só um reserva. */
-async function garantirFirebase() {
-  const { getApps, initializeApp, cert } = await import('firebase-admin/app');
-  if (getApps().length) return;
-  const json = process.env.FIREBASE_SERVICE_ACCOUNT;
-  initializeApp(json ? { credential: cert(JSON.parse(json)), storageBucket: process.env.FIREBASE_STORAGE_BUCKET } : undefined);
+  if (simulando()) return (g.__coachArm ??= armazenamentoEmMemoria());
+  const [{ armazenamentoFirebase }, { bucketAdmin }] = await Promise.all([import('./armazenamento'), import('../integracoes/firebase-admin')]);
+  return armazenamentoFirebase(bucketAdmin());
 }
 
 // ---------- Resposta ----------
 
-/** Roda o handler e transforma ErroCoach em JSON { erro } com o status certo. */
+/** Roda o handler e transforma ErroCoach/ErroHttp em JSON { erro } com o status certo. */
 export async function responder(fn: () => Promise<unknown>): Promise<Response> {
   try {
     const dados = await fn();
@@ -82,41 +66,36 @@ export function novoId(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 20);
 }
 
-/** Dados da empresa que o Coach usa (segmento, nome, abas, WhatsApp). JUNÇÃO: ler de empresas/{id}. */
+/** Dados da empresa que o Coach usa (segmento, nome, abas, WhatsApp) — lidos de empresas/{id} pelo banco da Base. */
 export async function dadosEmpresa(empresaId: string): Promise<{ nome?: string; segmento?: string; abas: string[]; whatsappConectado: boolean }> {
-  if (simulandoServidor()) return { nome: 'Empresa Demo', segmento: 'generico', abas: ['coach'], whatsappConectado: false };
-  const { getFirestore } = await import('firebase-admin/firestore');
-  await garantirFirebase();
-  const s = await getFirestore().doc(`empresas/${empresaId}`).get();
-  const e = (s.data() ?? {}) as { nome?: string; segmento?: string; plano?: { abas?: string[] }; whatsapp?: { phoneNumberId?: string } };
-  return { nome: e.nome, segmento: e.segmento, abas: e.plano?.abas ?? [], whatsappConectado: !!e.whatsapp?.phoneNumberId };
+  const b = await banco();
+  const e = await b.obter<Empresa>(juntar('empresas', empresaId));
+  const conexao = await b.obter<{ phoneNumberId?: string }>(juntar('empresas', empresaId, 'atendimento', 'conexao'));
+  return { nome: e?.nome, segmento: e?.segmento, abas: e?.plano?.abas ?? [], whatsappConectado: !!conexao?.phoneNumberId };
 }
 
-/**
- * Ganchos com Contatos (contrato da Base): atividade na linha do tempo e etapa do funil.
- * Simulado: não grava nada (só a reunião guarda o resultado).
- */
+/** Ganchos com Contatos (contrato da Base): atividade na linha do tempo e etapa do funil. */
 export async function ganchosContatos() {
-  if (simulandoServidor()) return undefined;
-  const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
-  await garantirFirebase();
-  const db = getFirestore();
+  const b = await banco();
   return {
     async registrarAtividade(empresaId: string, a: { contatoId: string; tipo: 'reuniao'; resumo: string; quando: string; porUid: string; reuniaoId: string }) {
       // id fixo por reunião: reanalisar atualiza a mesma atividade em vez de duplicar
-      await db.doc(`empresas/${empresaId}/atividades/reuniao-${a.reuniaoId}`).set({ id: `reuniao-${a.reuniaoId}`, empresaId, ...a });
-      await db.doc(`empresas/${empresaId}/contatos/${a.contatoId}`).set({ ultimaInteracaoEm: a.quando }, { merge: true });
+      const id = `reuniao-${a.reuniaoId}`;
+      await b.gravar(juntar('empresas', empresaId, 'atividades', id), { id, ...a });
+      if (await b.obter(juntar('empresas', empresaId, 'contatos', a.contatoId))) {
+        await b.mesclar(juntar('empresas', empresaId, 'contatos', a.contatoId), { ultimaInteracaoEm: a.quando });
+      }
     },
     async etapaAtual(empresaId: string, contatoId: string) {
-      const s = await db.doc(`empresas/${empresaId}/contatos/${contatoId}`).get();
-      return (s.data()?.etapa as string | undefined) ?? undefined;
+      const c = await b.obter<{ etapa?: string }>(juntar('empresas', empresaId, 'contatos', contatoId));
+      return c?.etapa ?? undefined;
     },
     async moverEtapa(empresaId: string, contatoId: string, etapa: string) {
-      await db.doc(`empresas/${empresaId}/contatos/${contatoId}`).set({ etapa }, { merge: true });
-      await db.collection(`empresas/${empresaId}/atividades`).add({
-        empresaId, contatoId, tipo: 'etapa', resumo: `Etapa → ${etapa} (pelo resultado da reunião)`, quando: new Date().toISOString(), porIA: true,
-        criadoEm: FieldValue.serverTimestamp(),
-      });
+      if (!(await b.obter(juntar('empresas', empresaId, 'contatos', contatoId)))) return;
+      await b.mesclar(juntar('empresas', empresaId, 'contatos', contatoId), { etapa });
+      const quando = new Date().toISOString();
+      const id = `etapa-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+      await b.gravar(juntar('empresas', empresaId, 'atividades', id), { id, contatoId, tipo: 'etapa', resumo: `Etapa → ${etapa} (pelo resultado da reunião)`, quando, porIA: true });
     },
   };
 }
