@@ -12,6 +12,7 @@ import { Avatar, Logo, ProvedorToast, Esqueleto, cx, ICONES_NAV, Folha } from '@
 import { BuscaGlobal } from './BuscaGlobal';
 import { AvisoPlano } from './plano/AvisoPlano';
 import { ConviteAba } from './plano/ConviteAba';
+import { destinoOnboarding } from '@/lib/planos/onboarding';
 
 export function Casca({ children }: { children: ReactNode }) {
   return (
@@ -124,7 +125,7 @@ function Moldura({ children }: { children: ReactNode }) {
         <Topo abrirBusca={() => setBuscaAberta(true)} />
         <AvisoPlano />
         {empresa && !empresa.onboardingConcluido && (
-          <Link href="/onboarding" className="flex items-center justify-center gap-2 border-b border-acento-1/20 bg-acento-1/10 px-4 py-2 text-center text-[13px] text-acento">
+          <Link href={destinoOnboarding(empresa) === '/onboarding' ? '/onboarding' : '/comecar'} className="flex items-center justify-center gap-2 border-b border-acento-1/20 bg-acento-1/10 px-4 py-2 text-center text-[13px] text-acento">
             Falta pouco para a Atena começar a trabalhar. <strong className="font-semibold">Terminar configuração →</strong>
           </Link>
         )}

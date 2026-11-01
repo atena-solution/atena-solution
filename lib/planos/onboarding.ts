@@ -62,6 +62,23 @@ export function pular(e: EstadoOnboarding, p: Passo, agoraIso: string): EstadoOn
   return { feitos: e.feitos, pulados: e.pulados.includes(p) ? e.pulados : [...e.pulados, p], atualizadoEm: agoraIso };
 }
 
+/**
+ * Um onboarding só: a Base (/onboarding) cuida de empresa → horários → serviços → marca; o guiado (/comecar)
+ * continua do "Treinar a IA" e do WhatsApp. Diz para onde mandar a pessoa sem repetir pergunta.
+ */
+export function destinoOnboarding(e: {
+  onboardingConcluido?: boolean;
+  onboarding?: { feitos: string[]; pulados: string[] };
+  plano?: { abas: string[] };
+}): '/onboarding' | '/comecar' | '/inicio' {
+  const estado: EstadoOnboarding = { feitos: (e.onboarding?.feitos ?? []) as Passo[], pulados: (e.onboarding?.pulados ?? []) as Passo[] };
+  const baseFeita = e.onboardingConcluido || estado.feitos.includes('servicos');
+  if (!baseFeita) return '/onboarding';
+  const usaAtendimento = (e.plano?.abas ?? []).includes('atendimento');
+  const faltaIA = !resolvido(estado, 'treinar') || !resolvido(estado, 'whatsapp');
+  return usaAtendimento && faltaIA ? '/comecar' : '/inicio';
+}
+
 /** Pendências que aparecem no Início depois do onboarding (passos pulados). */
 export function pendencias(e: EstadoOnboarding): InfoPasso[] {
   return PASSOS.filter((p) => e.pulados.includes(p.id));

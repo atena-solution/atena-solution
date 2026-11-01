@@ -9,13 +9,14 @@ import { ONBOARDING_VAZIO, PASSOS, concluido, marcarFeito, progresso, proximoPas
  * (Os dados da empresa e os serviços vão pelas rotas da Base: PATCH /api/empresa e POST /api/servicos.)
  */
 export const GET = rota(undefined, async (_req, { dados }) => {
-  const empresa = (await dados.obterEmpresa()) as { onboarding?: EstadoOnboarding } | null;
+  const empresa = (await dados.obterEmpresa()) as { onboarding?: EstadoOnboarding; onboardingConcluido?: boolean } | null;
   const estado = { ...ONBOARDING_VAZIO, ...(empresa?.onboarding ?? {}) };
   // Quem chega aqui já tem conta e empresa.
   const quando = estado.atualizadoEm ?? new Date().toISOString();
   let base = marcarFeito(marcarFeito(estado, 'conta', quando), 'empresa', quando);
   // Serviços já cadastrados (ex.: pelo onboarding da Base em /onboarding) contam como passo feito.
-  if (!base.feitos.includes('servicos') && (await dados.listar('servicos')).length > 0) base = marcarFeito(base, 'servicos', quando);
+  // O onboarding da Base concluído também (já perguntou horários e serviços).
+  if (!base.feitos.includes('servicos') && (empresa?.onboardingConcluido || (await dados.listar('servicos')).length > 0)) base = marcarFeito(base, 'servicos', quando);
   return Response.json({ estado: base, proximo: proximoPasso(base), progresso: progresso(base), concluido: concluido(base) });
 });
 

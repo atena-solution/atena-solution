@@ -9,6 +9,7 @@ import { HORARIOS_PADRAO } from '@/lib/base/empresas';
 import type { Empresa, HorarioDia, Servico } from '@/lib/tipos';
 import { EditorHorarios } from '../configuracoes/_partes/EditorHorarios';
 import { SEGMENTOS, TONS } from '../configuracoes/_partes/SEGMENTOS';
+import { destinoOnboarding } from '@/lib/planos/onboarding';
 
 const PASSOS = ['Empresa', 'Horários', 'Serviços', 'Marca'];
 
@@ -45,8 +46,10 @@ export function Onboarding() {
   // retoma de onde parou
   useEffect(() => {
     if (!usarExistente || !empresa) return;
-    if (empresa.onboardingConcluido) {
-      router.replace('/inicio');
+    const destino = destinoOnboarding(empresa);
+    if (destino !== '/onboarding') {
+      // a parte da Base já foi feita (aqui ou no /comecar): não pergunta de novo
+      router.replace(destino);
       return;
     }
     setDados({ nome: empresa.nome, segmento: empresa.segmento, telefone: empresa.telefone, endereco: empresa.endereco });
@@ -89,9 +92,17 @@ export function Onboarding() {
       }
       if (passo === 3) {
         await api('/api/empresa', { metodo: 'PATCH', corpo: { marca, onboardingConcluido: true } });
+        // o guiado (/comecar) continua do "Treinar a IA", sem repetir empresa, horários e serviços
+        await api('/api/cobranca/onboarding', { corpo: { passo: 'servicos', acao: 'feito' } }).catch(() => undefined);
         await recarregar();
-        avisar('Tudo pronto! Bem-vindo à Atena.');
-        router.replace('/inicio');
+        const proximo = destinoOnboarding({ ...empresa, onboardingConcluido: true, onboarding: { feitos: ['conta', 'empresa', 'servicos', ...(empresa?.onboarding?.feitos ?? [])], pulados: empresa?.onboarding?.pulados ?? [] } });
+        if (proximo === '/comecar') {
+          avisar('Empresa pronta! Agora vamos ensinar a sua atendente de IA.');
+          router.replace('/comecar');
+        } else {
+          avisar('Tudo pronto! Bem-vindo à Atena.');
+          router.replace('/inicio');
+        }
         return;
       }
       setPasso(passo + 1);

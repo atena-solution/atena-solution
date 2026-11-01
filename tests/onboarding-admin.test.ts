@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ONBOARDING_VAZIO, concluido, marcarFeito, podeAbrir, progresso, proximoPasso, pular, pendencias, validarEmpresa, validarServicos, horariosPadrao, telefoneE164, treinoDoOnboarding, perguntasRapidas } from '../lib/planos/onboarding';
+import { ONBOARDING_VAZIO, concluido, marcarFeito, podeAbrir, progresso, proximoPasso, pular, pendencias, validarEmpresa, validarServicos, horariosPadrao, telefoneE164, treinoDoOnboarding, perguntasRapidas, destinoOnboarding } from '../lib/planos/onboarding';
 import { ehEquipeAtena, custoEstimado, somarUso, semaforo, margem } from '../lib/planos/admin';
 
 const T = '2026-11-01T12:00:00.000Z';
@@ -75,5 +75,21 @@ describe('admin', () => {
   it('margem', () => {
     expect(margem(29700, 2970)).toEqual({ valor: 26730, pct: 90 });
     expect(margem(0, 100).pct).toBe(0);
+  });
+});
+
+describe('um onboarding só (junção)', () => {
+  const comAtendimento = { plano: { abas: ['atendimento', 'coach'] } };
+  it('sem a parte da Base → /onboarding', () => {
+    expect(destinoOnboarding({ ...comAtendimento })).toBe('/onboarding');
+    expect(destinoOnboarding({ ...comAtendimento, onboarding: { feitos: ['conta', 'empresa'], pulados: [] } })).toBe('/onboarding');
+  });
+  it('Base feita (aqui ou no /comecar) → /comecar continua do Treinar a IA', () => {
+    expect(destinoOnboarding({ ...comAtendimento, onboardingConcluido: true })).toBe('/comecar');
+    expect(destinoOnboarding({ ...comAtendimento, onboarding: { feitos: ['conta', 'empresa', 'servicos'], pulados: [] } })).toBe('/comecar');
+  });
+  it('treinar e WhatsApp resolvidos (feitos ou pulados), ou sem Atendimento no plano → /inicio', () => {
+    expect(destinoOnboarding({ ...comAtendimento, onboardingConcluido: true, onboarding: { feitos: ['treinar'], pulados: ['whatsapp'] } })).toBe('/inicio');
+    expect(destinoOnboarding({ plano: { abas: ['estudio'] }, onboardingConcluido: true })).toBe('/inicio');
   });
 });
