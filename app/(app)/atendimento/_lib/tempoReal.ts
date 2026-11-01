@@ -91,7 +91,9 @@ export function useConversa(id: string | null) {
   const [erro, setErro] = useState<string | null>(null)
   const empresaId = sessao?.empresaId
   const idAtual = useRef(id)
-  idAtual.current = id
+  useEffect(() => {
+    idAtual.current = id
+  }, [id])
 
   const recarregar = useCallback(async () => {
     if (!id) return

@@ -146,13 +146,11 @@ function dia(iso: string, fuso: string) {
 }
 
 function Baloes({ mensagens, fuso }: { mensagens: Mensagem[]; fuso: string }) {
-  let diaAnterior = ''
   return (
     <ol className="flex flex-col gap-1.5">
       {mensagens.map((m, i) => {
         const d = dia(m.em, fuso)
-        const mostraDia = d !== diaAnterior
-        diaAnterior = d
+        const mostraDia = i === 0 || dia(mensagens[i - 1].em, fuso) !== d
         const deCliente = m.de === 'cliente'
         const mesmoAutorAntes = i > 0 && mensagens[i - 1].de === m.de && !mostraDia
         return (
