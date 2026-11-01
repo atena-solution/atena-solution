@@ -115,3 +115,11 @@ describe('extrato no formato da sessão E (MovimentoCredito)', () => {
     expect(deMovimento({ id: 'p', empresaId: 'e1', origem: 'plano_mensal', quantidade: 100, saldoDepois: 100, descricao: 'Plano', quando: 'q' }).tipo).toBe('recarga');
   });
 });
+
+import { separarLegenda } from '../../lib/estudio/legenda';
+describe('separar legenda editada', () => {
+  it('tira as hashtags do fim e mantém as do meio', () => {
+    expect(separarLegenda('Corte novo #top no capricho\n\n#Barbearia #corte\n#SP')).toEqual({ legenda: 'Corte novo #top no capricho', hashtags: ['barbearia', 'corte', 'sp'] });
+    expect(separarLegenda('Sem tags')).toEqual({ legenda: 'Sem tags', hashtags: [] });
+  });
+});

@@ -146,10 +146,10 @@ export async function gerarPost(d: Dependencias, q: Quem, marca: KitMarca, e: En
 }
 
 /** Editar os textos da arte depois de pronta (grátis: o sistema redesenha). */
-export async function editarTextosPost(d: Dependencias, q: Quem, id: string, textos: NonNullable<Criacao['arte']>['textos'], legenda?: string): Promise<Criacao> {
+export async function editarTextosPost(d: Dependencias, q: Quem, id: string, textos: NonNullable<Criacao['arte']>['textos'], legenda?: string, hashtags?: string[]): Promise<Criacao> {
   const c = await d.repo.obterCriacao(q.empresaId, id);
   if (!c || c.tipo !== 'post' || !c.arte) throw new Error('Post não encontrado.');
-  const novo: Criacao = { ...c, arte: { ...c.arte, textos }, legenda: legenda ?? c.legenda };
+  const novo: Criacao = limparIndefinidos({ ...c, arte: { ...c.arte, textos: limparIndefinidos(textos) }, legenda: legenda ?? c.legenda, hashtags: hashtags ?? c.hashtags });
   await d.repo.salvarCriacao(novo);
   return novo;
 }

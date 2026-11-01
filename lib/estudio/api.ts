@@ -3,6 +3,7 @@
 import { mudarStatusPauta, sugerirMes, SEGMENTOS, type Pauta, type Segmento, type StatusPauta } from './calendario';
 import { CUSTO_CREDITOS, MAX_VARIACOES, resumoExtrato } from './creditos';
 import { filtrarGaleria } from './galeria';
+import { separarLegenda } from './legenda';
 import { kitDaEmpresa, normalizarKit, validarKit, KIT_PADRAO } from './marca';
 import { FORMATOS } from './prompts';
 import { editarTextosPost, gerarFotos, gerarPost, iniciarGeracaoVideo, atualizarVideo, registrarSlideshow, SemCreditos, type Dependencias, type Quem } from './servico';
@@ -133,7 +134,8 @@ export const editarPost = (d: Dependencias, q: Quem, id: string, corpo: unknown)
     const t = (b.textos ?? {}) as Record<string, unknown>;
     const titulo = texto(t.titulo, 60);
     if (!titulo) return erro(422, 'O título não pode ficar vazio.');
-    const c = await editarTextosPost(d, q, id, { titulo, subtitulo: texto(t.subtitulo, 90) || undefined, chamada: texto(t.chamada, 24) || undefined, autor: texto(t.autor, 40) || undefined }, typeof b.legenda === 'string' ? b.legenda.slice(0, 2200) : undefined);
+    const leg = typeof b.legenda === 'string' ? separarLegenda(b.legenda.slice(0, 2400)) : null;
+    const c = await editarTextosPost(d, q, id, { titulo, subtitulo: texto(t.subtitulo, 90) || undefined, chamada: texto(t.chamada, 24) || undefined, autor: texto(t.autor, 40) || undefined }, leg?.legenda, leg?.hashtags);
     return ok({ criacao: c });
   });
 

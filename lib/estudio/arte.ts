@@ -66,7 +66,7 @@ export function corMedia(pixels: ArrayLike<number>, passo = 4): string {
 
 // ---------- Quebra de linha ----------
 
-export type Medidor = (texto: string, tamanhoPx: number) => number;
+export type Medidor = (texto: string, tamanhoPx: number, fonte?: string, peso?: number) => number;
 
 /** Medidor aproximado (servidor/testes). No navegador use canvas.measureText. */
 export const medidorAproximado: Medidor = (texto, tamanho) => {
@@ -167,7 +167,9 @@ export interface PedidoLayout {
 
 export function montarLayout(p: PedidoLayout): { largura: number; altura: number; camadas: Camada[]; avisos: string[] } {
   const { largura: W, altura: H } = FORMATOS[p.formato];
-  const medir = p.medir ?? medidorAproximado;
+  const medirBase = p.medir ?? medidorAproximado;
+  const com = (fonte: string, peso: number): Medidor => (t, s) => medirBase(t, s, fonte, peso);
+  const medir = com(p.marca.fontes.texto, 700);
   const m = Math.round(W * 0.07); // margem
   const camadas: Camada[] = [];
   const avisos: string[] = [];
@@ -190,10 +192,10 @@ export function montarLayout(p: PedidoLayout): { largura: number; altura: number
 
   // Área de texto: terço inferior (depoimento: centro).
   const larguraTexto = W - m * 2;
-  const tituloAj = ajustarTexto(p.textos.titulo, { largura: larguraTexto, altura: H * 0.26 }, { max: Math.round(W * 0.11), min: Math.round(W * 0.05), maxLinhas: 3, entrelinha: 1.05 }, medir);
+  const tituloAj = ajustarTexto(p.textos.titulo, { largura: larguraTexto, altura: H * 0.26 }, { max: Math.round(W * 0.11), min: Math.round(W * 0.05), maxLinhas: 3, entrelinha: 1.05 }, com(fonteT, 400));
   if (tituloAj.cortado) avisos.push('O título ficou longo e foi cortado. Encurte para caber.');
   const subAj = p.textos.subtitulo
-    ? ajustarTexto(p.textos.subtitulo, { largura: larguraTexto, altura: H * 0.12 }, { max: Math.round(W * 0.042), min: Math.round(W * 0.03), maxLinhas: 3 }, medir)
+    ? ajustarTexto(p.textos.subtitulo, { largura: larguraTexto, altura: H * 0.12 }, { max: Math.round(W * 0.042), min: Math.round(W * 0.03), maxLinhas: 3 }, com(fonteX, 500))
     : null;
   if (subAj?.cortado) avisos.push('O subtítulo foi cortado.');
 

@@ -55,3 +55,14 @@ export function palavrasProibidas(texto: string, evitar: string[]): string[] {
 export function legendaCompleta(t: Pick<TextoPost, 'legenda' | 'hashtags'>): string {
   return t.hashtags.length ? `${t.legenda}\n\n${t.hashtags.map((h) => '#' + h).join(' ')}` : t.legenda;
 }
+
+/** Separa o texto editado pelo usuário em legenda + hashtags (as do fim e as soltas no texto ficam no texto). */
+export function separarLegenda(texto: string): { legenda: string; hashtags: string[] } {
+  const linhas = texto.trimEnd().split('\n');
+  const tags: string[] = [];
+  while (linhas.length && /^\s*(#[^\s#]+\s*)+$/.test(linhas[linhas.length - 1])) {
+    tags.unshift(...(linhas.pop()!.match(/#[^\s#]+/g) ?? []));
+  }
+  const hashtags = Array.from(new Set(tags.map(normalizarHashtag).filter(Boolean))).slice(0, 30);
+  return { legenda: linhas.join('\n').trim(), hashtags };
+}
