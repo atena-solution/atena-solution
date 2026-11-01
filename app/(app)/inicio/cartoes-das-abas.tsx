@@ -1,6 +1,7 @@
 'use client';
 
 import type { ComponentType } from 'react';
+import { CartaoAtendimento } from '../atendimento/CartaoInicio';
 
 /**
  * Ponto de encaixe do Início: cada aba (Atendimento, Coach, Estúdio) adiciona aqui o SEU cartão.
@@ -11,4 +12,6 @@ import type { ComponentType } from 'react';
  *
  * O cartão só aparece se a aba estiver no plano da empresa.
  */
-export const CARTOES_DAS_ABAS: { aba: 'atendimento' | 'coach' | 'estudio'; Componente: ComponentType }[] = [];
+export const CARTOES_DAS_ABAS: { aba: 'atendimento' | 'coach' | 'estudio'; Componente: ComponentType }[] = [
+  { aba: 'atendimento', Componente: CartaoAtendimento },
+];
