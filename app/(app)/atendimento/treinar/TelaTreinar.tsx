@@ -72,7 +72,7 @@ export function TelaTreinar() {
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
         <fieldset disabled={!podeEditar} className="flex min-w-0 flex-col gap-5">
           <Cartao className={cx(t.ligada && 'border-atendimento/40')}>
             <CorpoCartao className="flex flex-col gap-4">

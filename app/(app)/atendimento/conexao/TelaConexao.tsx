@@ -147,7 +147,7 @@ export function TelaConexao() {
         </Cartao>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Cartao>
           <CabecalhoCartao titulo="Passo a passo" descricao="Leva uns 15 minutos. Faça uma vez só." />
           <CorpoCartao>

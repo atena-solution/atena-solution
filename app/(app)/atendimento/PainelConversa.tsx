@@ -63,7 +63,7 @@ export function PainelConversa({ id, aoVoltar, agora }: { id: string; aoVoltar: 
   const fuso = empresa?.fuso ?? 'America/Sao_Paulo'
 
   return (
-    <div className="flex h-[calc(100dvh-7.5rem)] min-h-0 gap-4 md:h-full">
+    <div className="flex h-[calc(100dvh-11rem)] min-h-0 min-w-0 gap-4 md:h-full">
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-cartao border border-borda bg-superficie">
         {/* Topo */}
         <div className="flex items-center gap-3 border-b border-borda px-3 py-2.5 sm:px-4">
@@ -397,7 +397,7 @@ function Compositor({ detalhe, aoEnviar }: { detalhe: DetalheConversa; aoEnviar:
               else void enviar()
             }
           }}
-          placeholder={c.modo === 'ia' ? 'Escreva pra assumir e responder… (/ = mensagens rápidas)' : 'Escreva sua resposta… (/ = mensagens rápidas)'}
+          placeholder={c.modo === 'ia' ? 'Responder e assumir…  ( / atalhos)' : 'Sua resposta…  ( / atalhos)'}
           aria-label="Mensagem"
           className="min-h-10 flex-1 resize-none rounded-xl border border-borda bg-fundo px-3 py-2.5 text-sm text-texto placeholder:text-texto-3 focus:border-acento-1 focus:outline-none focus:ring-2 focus:ring-acento-1/20 disabled:opacity-50"
         />

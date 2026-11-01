@@ -78,9 +78,9 @@ export function TelaAtendimento() {
         <FaixaMetricas />
       </div>
 
-      <div className="grid min-h-0 gap-4 md:h-[calc(100dvh-15rem)] md:min-h-[520px] md:grid-cols-[minmax(280px,340px)_1fr]">
+      <div className="grid min-h-0 grid-cols-1 gap-4 md:h-[calc(100dvh-15rem)] md:min-h-[520px] md:grid-cols-[minmax(280px,340px)_1fr]">
         {/* Lista */}
-        <section aria-label="Conversas" className={cx('flex min-h-0 flex-col rounded-cartao border border-borda bg-superficie', selecionada && 'hidden md:flex')}>
+        <section aria-label="Conversas" className={cx('flex min-h-0 min-w-0 flex-col rounded-cartao border border-borda bg-superficie', selecionada && 'hidden md:flex')}>
           <div className="flex flex-col gap-3 border-b border-borda p-3">
             <Campo
               aria-label="Buscar conversa"
@@ -89,7 +89,7 @@ export function TelaAtendimento() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
             />
-            <div role="tablist" aria-label="Filtros" className="-mx-1 flex gap-1 overflow-x-auto px-1">
+            <div role="tablist" aria-label="Filtros" className="flex flex-wrap gap-1">
               {FILTROS.map((f) => (
                 <button
                   key={f.id}
@@ -97,7 +97,7 @@ export function TelaAtendimento() {
                   aria-selected={filtro === f.id}
                   onClick={() => setFiltro(f.id)}
                   className={cx(
-                    'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-colors',
+                    'inline-flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors',
                     filtro === f.id ? 'border-transparent bg-texto text-fundo' : 'border-borda text-texto-2 hover:border-borda-forte hover:text-texto',
                   )}
                 >
@@ -147,7 +147,7 @@ export function TelaAtendimento() {
         </section>
 
         {/* Conversa */}
-        <section aria-label="Conversa" className={cx('min-h-0', !selecionada && 'hidden md:block')}>
+        <section aria-label="Conversa" className={cx('min-h-0 min-w-0', !selecionada && 'hidden md:block')}>
           {selecionada ? (
             <PainelConversa key={selecionada} id={selecionada} aoVoltar={() => abrir(null)} agora={agora} />
           ) : (

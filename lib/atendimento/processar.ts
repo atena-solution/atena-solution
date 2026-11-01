@@ -107,7 +107,7 @@ async function receberMensagem(empresaId: string, ev: EventoMensagem, deps: Deps
     contato = await repo.criarContato(empresaId, {
       nome: ev.nome ?? '',
       telefone: ev.de,
-      origem: 'whatsapp',
+      origem: 'WhatsApp',
       etapa: ETAPA.novo,
       etiquetas: [],
       ultimaInteracaoEm: agoraISO,
