@@ -208,9 +208,12 @@ function FollowUp({ id, texto }: { id: string; texto: string }) {
     setEnviando(true);
     setEstado(null);
     try {
-      const r = await api<{ canal: string; link?: string; enviado?: boolean; pendente?: string }>(`/api/coach/reunioes/${id}/followup`, { method: 'POST', body: JSON.stringify({ texto: t }) });
-      if (r.link) window.open(r.link, '_blank', 'noopener');
-      else setEstado({ tom: 'info', msg: r.enviado ? 'Enviado pelo WhatsApp da empresa.' : r.pendente ?? 'Pronto.' });
+      const r = await api<{ canal: string; link?: string; enviado?: boolean; motivo?: string }>(`/api/coach/reunioes/${id}/followup`, { method: 'POST', body: JSON.stringify({ texto: t }) });
+      if (r.enviado) setEstado({ tom: 'info', msg: 'Enviado pelo WhatsApp da empresa. A resposta do cliente aparece no Atendimento.' });
+      else if (r.link) {
+        if (r.motivo) setEstado({ tom: 'erro', msg: `Não deu pelo número da empresa: ${r.motivo} Abrimos o WhatsApp pra você mandar.` });
+        window.open(r.link, '_blank', 'noopener');
+      } else setEstado({ tom: 'info', msg: 'Pronto.' });
     } catch (e) {
       setEstado({ tom: 'erro', msg: (e as Error).message });
     } finally {

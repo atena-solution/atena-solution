@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acaoNaConversa, enviarDaEquipe, processarItem, receberWebhook, rodarAutomacoes, rodarAvisos } from '@/lib/atendimento/processar'
+import { acaoNaConversa, enviarAoContato, enviarDaEquipe, processarItem, receberWebhook, rodarAutomacoes, rodarAvisos } from '@/lib/atendimento/processar'
 import { iaRoteirizada, iaSimulada, texto, usarFerramenta } from '@/lib/integracoes/claude'
 import { webhookDeTexto } from '@/lib/integracoes/whatsapp'
 import { ambiente, textos } from './ambiente'
@@ -266,5 +266,28 @@ describe('plano e uso de IA (junção)', () => {
     amb.avancar(9000)
     expect((await processarItem(i.itemId, i.empresaId, amb.deps)).acao).toBe('respondeu')
     expect(usos).toEqual([['e2', 'claude-sonnet-5-5', { entrada: 1200, saida: 40 }]])
+  })
+})
+
+describe('envio para um contato (follow-up do Coach)', () => {
+  it('sem conversa e sem janela aberta usa o modelo de retomada e abre a conversa com a equipe', async () => {
+    const amb = await ambiente(iaRoteirizada([]))
+    await amb.banco.gravar('empresas/e1/contatos/ct-carla', { id: 'ct-carla', empresaId: 'e1', nome: 'Carla', telefone: '5511977776666', origem: 'Coach', etapa: 'novo', etiquetas: [], ultimaInteracaoEm: '', criadoEm: '', campos: {} })
+    const c = { id: 'ct-carla' }
+    const r = await enviarAoContato('e1', c.id, 'dono-e1', 'Oi Carla, segue a proposta.', amb.deps)
+    expect(r.ok).toBe(true)
+    expect(amb.enviadas).toHaveLength(1)
+    expect(amb.enviadas[0]).toMatchObject({ phoneNumberId: 'PN1', para: '5511977776666', conteudo: { tipo: 'modelo', nome: 'retomada' } })
+    const conv = await amb.repo.conversaDoContato('e1', c.id)
+    expect(conv).toMatchObject({ modo: 'humano', houveHumano: true })
+  })
+  it('com a janela aberta manda texto livre; contato de outra empresa não é achado', async () => {
+    const amb = await ambiente(iaRoteirizada([texto('Oi!')]))
+    await receberWebhook(msg('PN1', 'oi'), amb.deps)
+    const c = await amb.repo.contatoPorTelefone('e1', tel)
+    const r = await enviarAoContato('e1', c!.id, 'dono-e1', 'Proposta enviada!', amb.deps)
+    expect(r.ok).toBe(true)
+    expect(amb.enviadas.at(-1)!.conteudo).toEqual({ tipo: 'texto', texto: 'Proposta enviada!' })
+    expect(await enviarAoContato('e2', c!.id, 'dono-e2', 'x', amb.deps)).toEqual({ ok: false, erro: 'Contato não encontrado.' })
   })
 })

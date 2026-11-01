@@ -407,6 +407,37 @@ export async function enviarDaEquipe(
 
 export type AcaoConversa = 'assumir' | 'devolver' | 'resolver' | 'reabrir' | 'lida'
 
+/**
+ * Manda um texto da equipe para um CONTATO (ex.: follow-up do Coach) pelo WhatsApp da empresa.
+ * Abre a conversa se ainda não existir. Respeita a janela de 24h: fora dela usa o modelo de retomada
+ * aprovado (ou recusa com o motivo). A conversa fica com a equipe (a IA não atropela o vendedor).
+ */
+export async function enviarAoContato(empresaId: string, contatoId: string, uid: string, texto: string, deps: Deps): Promise<ResultadoEquipe & { conversaId?: string }> {
+  const repo = deps.repo
+  const contato = await repo.contato(empresaId, contatoId)
+  if (!contato) return { ok: false, erro: 'Contato não encontrado.' }
+  if (!(await repo.conexao(empresaId))) return { ok: false, erro: 'Conecte o WhatsApp primeiro.' }
+  let conversa = await repo.conversaDoContato(empresaId, contato.id)
+  if (!conversa) {
+    const agoraISO = deps.agora().toISOString()
+    conversa = await repo.criarConversa(empresaId, {
+      contatoId: contato.id,
+      telefone: contato.telefone,
+      nomeContato: contato.nome,
+      status: 'aberta',
+      modo: 'humano',
+      precisaHumano: false,
+      ultimaMensagem: { texto: '', de: 'equipe', em: agoraISO },
+      iaDigitando: false,
+      naoLidas: 0,
+      houveHumano: true,
+      criadoEm: agoraISO,
+    })
+  }
+  const r = await enviarDaEquipe(empresaId, conversa.id, uid, { texto }, deps)
+  return { ...r, conversaId: conversa.id }
+}
+
 export async function acaoNaConversa(empresaId: string, conversaId: string, uid: string, acao: AcaoConversa, deps: Deps): Promise<boolean> {
   const repo = deps.repo
   const c = await repo.conversa(empresaId, conversaId)
