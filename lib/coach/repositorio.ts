@@ -9,6 +9,8 @@ export interface RepositorioCoach {
   salvarConfig(empresaId: string, c: ConfigCoach): Promise<void>;
   obterReuniao(empresaId: string, id: string): Promise<Reuniao | null>;
   salvarReuniao(r: Reuniao): Promise<void>;
+  /** Lê, altera e grava de forma atômica (no Firestore: transação). Devolve a reunião gravada. */
+  atualizarReuniao(empresaId: string, id: string, fn: (r: Reuniao) => Reuniao): Promise<Reuniao | null>;
   listarReunioes(empresaId: string, filtro?: { vendedorUid?: string; contatoId?: string; desdeISO?: string; limite?: number }): Promise<Reuniao[]>;
 }
 
@@ -36,6 +38,13 @@ export function repositorioEmMemoria(): RepositorioCoach & { _dados: Map<string,
       return r && r.empresaId === e ? copia(r) : null;
     },
     async salvarReuniao(r) { dados.set(caminhos.reuniao(r.empresaId, r.id), copia(r)); },
+    async atualizarReuniao(e, id, fn) {
+      const r = dados.get(caminhos.reuniao(e, id)) as Reuniao | undefined;
+      if (!r || r.empresaId !== e) return null;
+      const nova = fn(copia(r));
+      dados.set(caminhos.reuniao(e, id), copia(nova));
+      return copia(nova);
+    },
     async listarReunioes(e, f = {}) {
       const pref = `${caminhos.reunioes(e)}/`;
       let lista = [...dados.entries()]

@@ -1,12 +1,12 @@
 // Casos de uso do Coach. As rotas em app/api/coach só autenticam (exigirEmpresa) e chamam estas funções.
 // Tudo aqui recebe a Sessao (com empresaId) e o repositório; nada lê dado de outra empresa.
-import type { Analise, ConfigCoach, Fala, ModoGravacao, Reuniao, Roteiro, Sessao, Trilha } from './tipos';
+import type { Analise, ConfigCoach, Fala, ModoGravacao, Pedaco, Reuniao, Roteiro, Sessao, Trilha } from './tipos';
 import { CONFIG_PADRAO } from './tipos';
-import type { RepositorioCoach } from './repositorio';
+import { caminhos, type RepositorioCoach } from './repositorio';
 import { modeloDeRoteiro } from './modelos';
 import { normalizarRoteiro } from './roteiro';
 import { deslocarFalas, duracaoTotal, juntarTrilhas } from './transcricao';
-import { PEDACO_SEG, registrarPedaco, validarArquivo } from './gravacao';
+import { janelasDeTranscricao, PEDACO_SEG, registrarPedaco, validarArquivo } from './gravacao';
 import { biblioteca, objecoesComuns, placarPorVendedor, tendenciaSemanal } from './placar';
 import { atividadeDaReuniao, canalFollowup, etapaSugerida, linkWaMe } from './contatos';
 
@@ -94,7 +94,7 @@ export interface NovaReuniao {
   contatoNome?: string;
   contatoTelefone?: string;
   semAudioDaAba?: boolean;
-  arquivo?: { nome: string; mime: string; bytes: number };
+  arquivo?: { nome: string; mime: string; bytes: number; duracaoSeg?: number };
 }
 
 export async function criarReuniao(
@@ -125,7 +125,17 @@ export async function criarReuniao(
     criadoEm: agoraISO,
     atualizadoEm: agoraISO,
   };
-  if (e.arquivo) r.arquivo = { caminho: `empresas/${s.empresaId}/reunioes/${id}/${e.arquivo.nome.replace(/[^\w.-]+/g, '_')}`, mime: e.arquivo.mime, bytes: e.arquivo.bytes };
+  if (e.arquivo) {
+    r.arquivo = {
+      caminho: caminhos.audio(s.empresaId, id, `arquivo-${e.arquivo.nome.replace(/[^\w.-]+/g, '_').slice(-80)}`),
+      nome: e.arquivo.nome.slice(0, 200),
+      mime: e.arquivo.mime.split(';')[0] || 'application/octet-stream',
+      bytes: e.arquivo.bytes,
+      duracaoSeg: e.arquivo.duracaoSeg && e.arquivo.duracaoSeg > 0 ? Math.round(e.arquivo.duracaoSeg) : undefined,
+      janelasFeitas: 0,
+    };
+    r.duracaoSeg = r.arquivo.duracaoSeg ?? 0;
+  }
   await repo.salvarReuniao(r);
   return r;
 }
@@ -134,13 +144,14 @@ export async function criarReuniao(
 export type Transcrever = (audio: Uint8Array, mime: string, p: { trilha: Trilha; indice: number; duracaoSeg: number }) => Promise<Fala[]>;
 
 /**
- * Recebe um pedaço de 5 min durante a reunião, transcreve e salva o andamento.
- * Se a transcrição falhar, o pedaço fica com status "erro" (a reunião continua).
+ * Recebe um pedaço de 5 min durante a reunião, guarda o áudio, transcreve e salva o andamento.
+ * Se a transcrição falhar, o pedaço fica com status "erro" (a reunião continua e dá pra reenviar).
  */
 export async function receberPedaco(
   s: Sessao, repo: RepositorioCoach, reuniaoId: string,
   p: { trilha: Trilha; indice: number; duracaoSeg?: number; inicioSeg?: number; audio: Uint8Array; mime: string },
   transcrever: Transcrever, agoraISO = new Date().toISOString(),
+  guardarAudio?: (caminho: string, bytes: Uint8Array, mime: string) => Promise<void>,
 ) {
   const r = await carregar(s, repo, reuniaoId, true);
   if (r.modo === 'arquivo') throw new ErroCoach(400, 'Esta reunião é de arquivo enviado.');
@@ -148,22 +159,29 @@ export async function receberPedaco(
   const permitidas: Trilha[] = r.modo === 'duas-trilhas' ? ['vendedor', 'cliente'] : ['misto'];
   if (!permitidas.includes(p.trilha)) throw new ErroCoach(400, 'Trilha não combina com o modo da gravação.');
   if (!Number.isInteger(p.indice) || p.indice < 0 || p.indice > 500) throw new ErroCoach(400, 'Pedaço inválido.');
+  if (!p.audio?.byteLength) throw new ErroCoach(400, 'Pedaço de áudio vazio.');
   const duracaoSeg = Math.min(Math.max(1, p.duracaoSeg ?? PEDACO_SEG), PEDACO_SEG * 2);
   const inicioSeg = p.inicioSeg ?? p.indice * PEDACO_SEG;
+  const mime = p.mime.split(';')[0] || 'audio/webm';
+  const ext = mime.includes('ogg') ? 'ogg' : mime.includes('mp4') ? 'm4a' : 'webm';
+  const caminhoAudio = caminhos.audio(s.empresaId, reuniaoId, `${p.trilha}-${String(p.indice).padStart(3, '0')}.${ext}`);
 
-  let pedaco;
+  let pedaco: Pedaco;
   try {
+    if (guardarAudio) await guardarAudio(caminhoAudio, p.audio, mime);
     const falas = await transcrever(p.audio, p.mime, { trilha: p.trilha, indice: p.indice, duracaoSeg });
-    pedaco = { indice: p.indice, trilha: p.trilha, inicioSeg, duracaoSeg, status: 'transcrito' as const, falas: deslocarFalas(falas, inicioSeg) };
+    pedaco = { indice: p.indice, trilha: p.trilha, inicioSeg, duracaoSeg, status: 'transcrito', falas: deslocarFalas(falas, inicioSeg), caminhoAudio: guardarAudio ? caminhoAudio : undefined, mime };
   } catch (err) {
-    pedaco = { indice: p.indice, trilha: p.trilha, inicioSeg, duracaoSeg, status: 'erro' as const, falas: [], erro: String((err as Error).message).slice(0, 300) };
+    pedaco = { indice: p.indice, trilha: p.trilha, inicioSeg, duracaoSeg, status: 'erro', falas: [], erro: String((err as Error).message).slice(0, 300) };
   }
-  // relê pra não perder pedaço de outra trilha que chegou ao mesmo tempo (melhor esforço; no Firestore usar transação)
-  const atual = (await repo.obterReuniao(s.empresaId, reuniaoId)) ?? r;
-  atual.pedacos = registrarPedaco(atual.pedacos, pedaco);
-  atual.duracaoSeg = duracaoTotal(atual.pedacos);
-  atual.atualizadoEm = agoraISO;
-  await repo.salvarReuniao(atual);
+  // gravação atômica: as duas trilhas mandam pedaços ao mesmo tempo
+  const atual = await repo.atualizarReuniao(s.empresaId, reuniaoId, (x) => {
+    x.pedacos = registrarPedaco(x.pedacos, pedaco);
+    x.duracaoSeg = duracaoTotal(x.pedacos);
+    x.atualizadoEm = agoraISO;
+    return x;
+  });
+  if (!atual) throw new ErroCoach(404, 'Reunião não encontrada.');
   return { pedaco, reuniao: atual };
 }
 
@@ -215,18 +233,64 @@ export async function analisarReuniao(
   return { reuniao: r, falas, etapaNova };
 }
 
-/** Guarda a transcrição de um arquivo enviado (já em tempo do arquivo) como um pedaço único. */
-export async function registrarTranscricaoArquivo(
-  s: Sessao, repo: RepositorioCoach, reuniaoId: string, falas: Fala[], duracaoSeg: number, agoraISO = new Date().toISOString(),
+export interface DepsArquivo {
+  /** Lê os bytes do arquivo no Storage. */
+  lerArquivo: (caminho: string) => Promise<Uint8Array>;
+  /** Sobe pro Gemini (Files API). Em SIMULAR=1 pode devolver uri falsa. */
+  enviarGemini: (bytes: Uint8Array, mime: string, nome: string) => Promise<{ uri: string; mimeType: string }>;
+  /** Transcreve uma janela; tempos já no tempo do arquivo. */
+  transcreverJanela: (arq: { uri: string; mimeType: string }, janela: { inicioSeg: number; fimSeg: number }, indice: number) => Promise<Fala[]>;
+}
+
+/** Arquivo no Gemini vale 48 h; reenviar se passou de 40 h. */
+const VALIDADE_GEMINI_MS = 40 * 3600 * 1000;
+
+/**
+ * Processa UM passo do arquivo enviado (pra caber no tempo de uma função da Vercel):
+ * 1º chamada sobe pro Gemini; as seguintes transcrevem uma janela de 10 min cada.
+ * A tela chama de novo até `terminou`.
+ */
+export async function processarArquivo(
+  s: Sessao, repo: RepositorioCoach, reuniaoId: string, deps: DepsArquivo, agoraISO = new Date().toISOString(),
 ) {
   const r = await carregar(s, repo, reuniaoId, true);
-  if (r.modo !== 'arquivo') throw new ErroCoach(400, 'Esta reunião não é de arquivo.');
-  r.pedacos = [{ indice: 0, trilha: 'misto', inicioSeg: 0, duracaoSeg, status: 'transcrito', falas }];
-  r.duracaoSeg = Math.max(duracaoSeg, duracaoTotal(r.pedacos));
-  r.status = 'transcrevendo';
-  r.atualizadoEm = agoraISO;
-  await repo.salvarReuniao(r);
-  return r;
+  if (r.modo !== 'arquivo' || !r.arquivo) throw new ErroCoach(400, 'Esta reunião não é de arquivo.');
+  const arq = r.arquivo;
+  const duracao = arq.duracaoSeg ?? 0;
+  if (duracao <= 0) throw new ErroCoach(400, 'Não deu pra ler a duração do arquivo. Tente outro formato (mp3 ou m4a).');
+  const janelas = janelasDeTranscricao(duracao);
+  const feitas = arq.janelasFeitas ?? 0;
+  if (feitas >= janelas.length) return { reuniao: r, feitas, total: janelas.length, terminou: true };
+
+  const geminiVencido = !arq.gemini || new Date(agoraISO).getTime() - new Date(arq.gemini.enviadoEm).getTime() > VALIDADE_GEMINI_MS;
+  if (geminiVencido) {
+    const bytes = await deps.lerArquivo(arq.caminho);
+    const g = await deps.enviarGemini(bytes, arq.mime, arq.nome);
+    const salvo = await repo.atualizarReuniao(s.empresaId, reuniaoId, (x) => {
+      x.arquivo = { ...x.arquivo!, gemini: { uri: g.uri, mimeType: g.mimeType, enviadoEm: agoraISO } };
+      x.status = 'transcrevendo';
+      x.atualizadoEm = agoraISO;
+      return x;
+    });
+    return { reuniao: salvo!, feitas, total: janelas.length, terminou: false };
+  }
+
+  const j = janelas[feitas];
+  let pedaco: Pedaco;
+  try {
+    const falas = await deps.transcreverJanela(arq.gemini!, j, feitas);
+    pedaco = { indice: feitas, trilha: 'misto', inicioSeg: j.inicioSeg, duracaoSeg: j.fimSeg - j.inicioSeg, status: 'transcrito', falas };
+  } catch (err) {
+    pedaco = { indice: feitas, trilha: 'misto', inicioSeg: j.inicioSeg, duracaoSeg: j.fimSeg - j.inicioSeg, status: 'erro', falas: [], erro: String((err as Error).message).slice(0, 300) };
+  }
+  const salvo = await repo.atualizarReuniao(s.empresaId, reuniaoId, (x) => {
+    x.pedacos = registrarPedaco(x.pedacos, pedaco);
+    x.arquivo = { ...x.arquivo!, janelasFeitas: feitas + 1 };
+    x.duracaoSeg = Math.max(duracao, duracaoTotal(x.pedacos));
+    x.atualizadoEm = agoraISO;
+    return x;
+  });
+  return { reuniao: salvo!, feitas: feitas + 1, total: janelas.length, terminou: feitas + 1 >= janelas.length };
 }
 
 export async function obterReuniao(s: Sessao, repo: RepositorioCoach, id: string) {

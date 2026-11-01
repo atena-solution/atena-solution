@@ -77,12 +77,35 @@ describe('fluxo completo', () => {
     await expect(S.criarReuniao(vend1, repo, { modo: 'arquivo', arquivo: { nome: 'x.pdf', mime: 'application/pdf', bytes: 3 } }, 'r4')).rejects.toThrow(/Formato/);
   });
 
-  it('arquivo enviado: registra transcrição e analisa', async () => {
-    const r = await S.criarReuniao(vend1, repo, { modo: 'arquivo', arquivo: { nome: 'call 1.mp3', mime: 'audio/mpeg', bytes: 1000 } }, 'r5');
-    expect(r.arquivo!.caminho).toBe('empresas/e1/reunioes/r5/call_1.mp3');
-    await S.registrarTranscricaoArquivo(vend1, repo, 'r5', transcricaoSimulada({ trilha: 'misto' }), 300);
+  it('arquivo enviado: sobe pro Gemini e transcreve uma janela por chamada', async () => {
+    const r = await S.criarReuniao(vend1, repo, { modo: 'arquivo', arquivo: { nome: 'call 1.mp3', mime: 'audio/mpeg', bytes: 1000, duracaoSeg: 1500 } }, 'r5');
+    expect(r.arquivo!.caminho).toBe('empresas/e1/reunioes/r5/arquivo-call_1.mp3');
+    let envios = 0;
+    const depsArq: S.DepsArquivo = {
+      lerArquivo: async () => new Uint8Array([1]),
+      enviarGemini: async () => { envios++; return { uri: 'g://1', mimeType: 'audio/mpeg' }; },
+      transcreverJanela: async (_a, j, i) => transcricaoSimulada({ trilha: 'misto', indice: i, duracaoSeg: j.fimSeg - j.inicioSeg }).map((f) => ({ ...f, inicioSeg: f.inicioSeg + j.inicioSeg, fimSeg: f.fimSeg + j.inicioSeg })),
+    };
+    const passos = [];
+    let p;
+    do { p = await S.processarArquivo(vend1, repo, 'r5', depsArq, '2026-11-01T12:00:00.000Z'); passos.push(p.feitas); } while (!p.terminou);
+    expect(envios).toBe(1);
+    expect(passos).toEqual([0, 1, 2, 3]);
+    expect(p.reuniao.pedacos).toHaveLength(3);
+    // depois de 48 h reenvia
+    await repo.atualizarReuniao('e1', 'r5', (x) => { x.arquivo!.janelasFeitas = 2; return x; });
+    await S.processarArquivo(vend1, repo, 'r5', depsArq, '2026-11-03T12:00:00.000Z');
+    expect(envios).toBe(2);
     const { reuniao } = await S.analisarReuniao(vend1, repo, 'r5', deps);
     expect(reuniao.status).toBe('pronta');
+  });
+
+  it('pedaço guarda o áudio no Storage da empresa', async () => {
+    await S.criarReuniao(vend1, repo, { modo: 'so-microfone' }, 'r6');
+    const guardados: string[] = [];
+    const { pedaco } = await S.receberPedaco(vend1, repo, 'r6', { trilha: 'misto', indice: 2, audio, mime: 'audio/webm;codecs=opus' }, transcrever, undefined, async (c) => { guardados.push(c); });
+    expect(guardados).toEqual(['empresas/e1/reunioes/r6/misto-002.webm']);
+    expect(pedaco).toMatchObject({ caminhoAudio: guardados[0], inicioSeg: 600, mime: 'audio/webm' });
   });
 });
 

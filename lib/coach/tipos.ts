@@ -52,6 +52,9 @@ export interface Pedaco {
   duracaoSeg: number;
   status: 'enviado' | 'transcrito' | 'erro';
   falas: Fala[];
+  /** Áudio do pedaço no Storage (pro player). */
+  caminhoAudio?: string;
+  mime?: string;
   erro?: string;
 }
 
@@ -119,7 +122,18 @@ export interface Reuniao {
   pedacos: Pedaco[];
   duracaoSeg: number;
   /** Caminho do arquivo no Storage (envio de arquivo ou áudio juntado). */
-  arquivo?: { caminho: string; mime: string; bytes: number; url?: string };
+  arquivo?: {
+    caminho: string;
+    mime: string;
+    bytes: number;
+    nome: string;
+    /** Duração lida no navegador (metadados do arquivo). */
+    duracaoSeg?: number;
+    /** Arquivo já enviado à Files API do Gemini (vale 48 h). */
+    gemini?: { uri: string; mimeType: string; enviadoEm: string };
+    /** Quantas janelas de 10 min já foram transcritas. */
+    janelasFeitas?: number;
+  };
   analise?: Analise;
   naBiblioteca: boolean;
   erro?: string;
