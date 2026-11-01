@@ -1,0 +1,167 @@
+@import 'tailwindcss';
+
+/* Tema: claro por padrão, escuro por preferência do sistema ou data-tema="escuro". */
+@custom-variant dark (&:where([data-tema='escuro'], [data-tema='escuro'] *));
+
+:root {
+  --fundo: #f7f5f0;
+  --superficie: #ffffff;
+  --superficie-2: #f0ede6;
+  --borda: #e4e0d6;
+  --borda-forte: #cfc9bb;
+  --texto: #14171c;
+  --texto-2: #545a66;
+  --texto-3: #868c97;
+  --acento-1: #3b5bdb;
+  --acento-2: #7048e8;
+  --acento-texto: #3b4fc4;
+  --sucesso: #1f9a66;
+  --atencao: #b7791f;
+  --erro: #d93b40;
+  --aba-atendimento: #0f9b8e;
+  --aba-coach: #7048e8;
+  --aba-estudio: #d08a1f;
+  --sombra: 0 1px 2px rgb(20 23 28 / 0.04);
+  --foco: #3b5bdb;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) {
+    --fundo: #0e1116;
+    --superficie: #151920;
+    --superficie-2: #1b2029;
+    --borda: #262c36;
+    --borda-forte: #353c48;
+    --texto: #eef0f3;
+    --texto-2: #a8afbb;
+    --texto-3: #747c89;
+    --acento-texto: #94a8ff;
+    --sucesso: #2fb37c;
+    --atencao: #e8a93b;
+    --erro: #e5484d;
+    --aba-atendimento: #2ec4b6;
+    --aba-coach: #9b7bff;
+    --aba-estudio: #e8a93b;
+    --sombra: 0 1px 2px rgb(0 0 0 / 0.3);
+    --foco: #94a8ff;
+    color-scheme: dark;
+  }
+}
+
+:root[data-tema='escuro'] {
+  --fundo: #0e1116;
+  --superficie: #151920;
+  --superficie-2: #1b2029;
+  --borda: #262c36;
+  --borda-forte: #353c48;
+  --texto: #eef0f3;
+  --texto-2: #a8afbb;
+  --texto-3: #747c89;
+  --acento-texto: #94a8ff;
+  --sucesso: #2fb37c;
+  --atencao: #e8a93b;
+  --erro: #e5484d;
+  --aba-atendimento: #2ec4b6;
+  --aba-coach: #9b7bff;
+  --aba-estudio: #e8a93b;
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.3);
+  --foco: #94a8ff;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-fundo: var(--fundo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-borda: var(--borda);
+  --color-borda-forte: var(--borda-forte);
+  --color-texto: var(--texto);
+  --color-texto-2: var(--texto-2);
+  --color-texto-3: var(--texto-3);
+  --color-acento-1: var(--acento-1);
+  --color-acento-2: var(--acento-2);
+  --color-acento: var(--acento-texto);
+  --color-sucesso: var(--sucesso);
+  --color-atencao: var(--atencao);
+  --color-erro: var(--erro);
+  --color-atendimento: var(--aba-atendimento);
+  --color-coach: var(--aba-coach);
+  --color-estudio: var(--aba-estudio);
+  --radius-cartao: 14px;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+html,
+body {
+  background: var(--fundo);
+  color: var(--texto);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid var(--foco);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.gradiente-atena {
+  background-image: linear-gradient(135deg, var(--acento-1), var(--acento-2));
+}
+
+.titulo-serif {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.numero {
+  font-family: var(--font-mono);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes pulso-ao-vivo {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sucesso) 55%, transparent); }
+  70% { box-shadow: 0 0 0 7px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.ao-vivo {
+  animation: pulso-ao-vivo 1.8s ease-out infinite;
+}
+
+@keyframes brilho {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+.esqueleto {
+  background: linear-gradient(90deg, var(--superficie-2) 0, var(--borda) 50%, var(--superficie-2) 100%);
+  background-size: 200px 100%;
+  background-repeat: no-repeat;
+  background-color: var(--superficie-2);
+  animation: brilho 1.4s ease-in-out infinite;
+}
+
+@keyframes entrar-baixo {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.entrar {
+  animation: entrar-baixo 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
