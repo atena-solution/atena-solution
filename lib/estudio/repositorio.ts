@@ -20,6 +20,7 @@ export interface RepositorioEstudio {
   salvarPautas(empresaId: string, pautas: Pauta[]): Promise<void>;
   listarPautas(empresaId: string, mes: string /* AAAA-MM */): Promise<Pauta[]>;
   obterPauta(empresaId: string, id: string): Promise<Pauta | null>;
+  apagarPauta(empresaId: string, id: string): Promise<boolean>;
 
   /** Lê saldo + extrato e grava o resultado de forma atômica (transação no Firestore). */
   transacaoCreditos<T>(empresaId: string, op: OperacaoCredito<T>): Promise<T>;
@@ -94,6 +95,10 @@ export class RepositorioMemoria implements RepositorioEstudio {
   }
   async obterPauta(empresaId: string, id: string) {
     return clonar(exigirMesmaEmpresa(this.de(this.pautas, empresaId).get(id), empresaId));
+  }
+
+  async apagarPauta(empresaId: string, id: string) {
+    return this.de(this.pautas, empresaId).delete(id);
   }
 
   async transacaoCreditos<T>(empresaId: string, op: OperacaoCredito<T>): Promise<T> {

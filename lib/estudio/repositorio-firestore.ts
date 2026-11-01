@@ -128,6 +128,15 @@ export class RepositorioFirestore implements RepositorioEstudio {
     return exigirMesmaEmpresa(s.exists ? (s.data() as unknown as Pauta) : null, empresaId);
   }
 
+  async apagarPauta(empresaId: string, id: string) {
+    const ref = this.emp(empresaId).collection('pautas').doc(id);
+    const s = await ref.get();
+    if (!s.exists) return false;
+    exigirMesmaEmpresa(s.data() as unknown as Pauta, empresaId);
+    await ref.delete();
+    return true;
+  }
+
   async transacaoCreditos<T>(empresaId: string, op: OperacaoCredito<T>): Promise<T> {
     const empRef = this.emp(empresaId);
     const col = empRef.collection('creditos');
