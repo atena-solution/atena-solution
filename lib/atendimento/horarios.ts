@@ -26,13 +26,9 @@ export interface EntradaHorarios {
   profissionalId?: string
 }
 
+/** Status que ocupam a agenda — a mesma lista da Agenda da Base (STATUS_QUE_OCUPAM). */
 export function ocupa(ag: Pick<Agendamento, 'status'>): boolean {
   return STATUS_QUE_OCUPAM.includes(ag.status)
-}
-
-/** Dois intervalos [a1,a2) e [b1,b2) se cruzam? */
-export function cruza(a1: number, a2: number, b1: number, b2: number): boolean {
-  return a1 < b2 && b1 < a2
 }
 
 /** Profissionais que fazem o serviço (sem serviços cadastrados = faz tudo). */

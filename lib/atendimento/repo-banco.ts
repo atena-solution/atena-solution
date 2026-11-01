@@ -18,7 +18,8 @@ import { createHash } from 'node:crypto'
 import type { Banco } from '@/lib/dados/banco'
 import { juntar } from '@/lib/dados/banco'
 import { novoId } from '@/lib/dados/empresa'
-import { cruza, ocupa } from './horarios'
+import { temConflito } from '@/lib/agenda/horarios'
+import { caminhoTravaAgenda, travaLocal } from '@/lib/agenda/trava'
 import { treinoPadrao, type RepoAtendimento } from './repositorio'
 import type {
   Agendamento,
@@ -46,23 +47,14 @@ export interface Atomico {
 
 /** Versão de um processo só (memória / testes). */
 export function atomicoLocal(b: Banco): Atomico {
-  const travas = new Map<string, Promise<unknown>>()
   return {
     async criarSeNaoExiste(caminho, dados) {
       if (await b.obter(caminho)) return false
       await b.gravar(caminho, dados)
       return true
     },
-    async comTrava(caminho, fn) {
-      const anterior = travas.get(caminho) ?? Promise.resolve()
-      const atual = anterior.catch(() => undefined).then(fn)
-      travas.set(caminho, atual)
-      try {
-        return await atual
-      } finally {
-        if (travas.get(caminho) === atual) travas.delete(caminho)
-      }
-    },
+    // a mesma fila da agenda da Base: IA e equipe esperam juntas
+    comTrava: (caminho, fn) => travaLocal.comTrava(caminho, fn),
   }
 }
 
@@ -156,17 +148,21 @@ export class RepoBanco implements RepoAtendimento {
     return this.b.obter<Agendamento>(this.e(id, 'agendamentos', agId))
   }
   async criarAgendamentoSeLivre(id: string, ag: Omit<Agendamento, 'id'>) {
-    // trava por profissional: dois clientes não pegam o mesmo horário ao mesmo tempo
-    return this.at.comTrava(this.e(id, 'atendimento_travas', seguro(ag.profissionalId)), async () => {
-      const i = Date.parse(ag.inicio)
-      const f = Date.parse(ag.fim)
-      const choca = (await this.todosAgendamentos(id)).some(
-        (x) => x.profissionalId === ag.profissionalId && ocupa(x) && cruza(i, f, Date.parse(x.inicio), Date.parse(x.fim)),
-      )
-      if (choca) return null
+    // trava por profissional (a mesma da Agenda) + a regra única de "horário ocupado" (temConflito)
+    return this.at.comTrava(caminhoTravaAgenda(id, ag.profissionalId), async () => {
+      if (temConflito(await this.todosAgendamentos(id), ag.profissionalId, ag.inicio, ag.fim)) return null
       const novo: Agendamento = { ...ag, id: novoId('ag-') }
       await this.b.gravar(this.e(id, 'agendamentos', novo.id), novo)
       return novo
+    })
+  }
+  async remarcarSeLivre(id: string, agId: string, patch: Pick<Agendamento, 'inicio' | 'fim' | 'profissionalId'> & Partial<Agendamento>) {
+    return this.at.comTrava(caminhoTravaAgenda(id, patch.profissionalId), async () => {
+      const atual = await this.agendamento(id, agId)
+      if (!atual) return false
+      if (temConflito(await this.todosAgendamentos(id), patch.profissionalId, patch.inicio, patch.fim, agId)) return false
+      await this.b.mesclar(this.e(id, 'agendamentos', agId), { ...patch, id: agId })
+      return true
     })
   }
   async atualizarAgendamento(id: string, agId: string, patch: Partial<Agendamento>) {

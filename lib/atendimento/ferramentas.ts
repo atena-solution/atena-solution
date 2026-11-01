@@ -230,13 +230,14 @@ export async function executarFerramenta(nome: string, input: Record<string, unk
       if (!conferido.ok) return { erro: true, conteudo: { ok: false, erro: conferido.motivo } }
       const resumo = `${servico.nome} ${descreverInstante(inicio, fuso)}`
       if (!ctx.seco) {
-        await ctx.repo.atualizarAgendamento(ctx.empresa.id, ag.id, {
+        const ok = await ctx.repo.remarcarSeLivre(ctx.empresa.id, ag.id, {
           inicio: inicio.toISOString(),
           fim: conferido.fim.toISOString(),
           profissionalId: conferido.profissionalId,
           status: 'marcado',
           lembretes: {},
         })
+        if (!ok) return { erro: true, conteudo: { ok: false, erro: 'Esse horário acabou de ser ocupado.' } }
         await ctx.repo.registrarAtividade(ctx.empresa.id, {
           contatoId: ctx.contato.id,
           tipo: 'agendamento',
