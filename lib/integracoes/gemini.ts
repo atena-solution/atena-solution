@@ -256,3 +256,24 @@ export async function transcreverArquivo(
   }
   return todas;
 }
+
+// ---------- Áudio do cliente no WhatsApp (Atendimento) ----------
+
+/** Texto de exemplo do modo simulado (o cliente "falou" isto no áudio). */
+export const AUDIO_CLIENTE_SIMULADO = 'Oi, tudo bem? Queria saber se tem horário amanhã à tarde e quanto custa.';
+
+/**
+ * Transcreve um áudio curto que o cliente mandou no WhatsApp (OGG/Opus, em geral < 1 min) e devolve só o texto.
+ * Usa a mesma chamada inline do Coach (generateContent com inline_data), trilha 'cliente'. CONFIRMAR AO VIVO com áudio real da Meta.
+ */
+export async function transcreverAudioCliente(audio: Uint8Array, mime: string, fetcher?: typeof fetch): Promise<string | null> {
+  if (simulando()) return AUDIO_CLIENTE_SIMULADO;
+  const falas = await transcreverPedaco(audio, mime || 'audio/ogg', { trilha: 'cliente' }, fetcher);
+  const texto = falas.map((f) => f.texto.trim()).filter(Boolean).join(' ');
+  return texto || null;
+}
+
+/** Duração aproximada de um áudio do WhatsApp pelo tamanho (Opus ~16 kbps), só para estimar custo. */
+export function segundosAproxAudio(bytes: number): number {
+  return Math.max(1, Math.round(bytes / 2000));
+}

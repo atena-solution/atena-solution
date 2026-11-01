@@ -291,3 +291,22 @@ describe('envio para um contato (follow-up do Coach)', () => {
     expect(await enviarAoContato('e2', c!.id, 'dono-e2', 'x', amb.deps)).toEqual({ ok: false, erro: 'Contato não encontrado.' })
   })
 })
+
+describe('áudio do cliente (junção com o Gemini)', () => {
+  it('o áudio vira texto e a IA responde ao que foi falado', async () => {
+    const ia = iaRoteirizada([texto('Tem sim! Às 15h serve?')])
+    const amb = await ambiente(ia)
+    const pedidos: unknown[] = []
+    amb.deps.transcrever = async (p) => (pedidos.push(p), 'tem horário amanhã à tarde?')
+    const corpo = webhookDeTexto({ phoneNumberId: 'PN1', de: tel, texto: '' }) as { entry: { changes: { value: { messages: Record<string, unknown>[] } }[] }[] }
+    const m = corpo.entry[0].changes[0].value.messages[0]
+    delete m.text
+    m.type = 'audio'
+    m.audio = { id: 'MIDIA1', mime_type: 'audio/ogg; codecs=opus' }
+    const [i] = (await receberWebhook(corpo, amb.deps)).itens
+    expect(pedidos).toEqual([{ empresaId: 'e1', midiaId: 'MIDIA1', mime: 'audio/ogg; codecs=opus', token: 'TOKEN-e1' }])
+    amb.avancar(9000)
+    expect((await processarItem(i.itemId, i.empresaId, amb.deps)).acao).toBe('respondeu')
+    expect(JSON.stringify(ia.pedidos[0].mensagens)).toContain('tem horário amanhã à tarde?')
+  })
+})
