@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Botao, Campo, Modal, Select, cx, useToast } from '@/app/ui';
 import { useSessao } from '@/lib/sessao';
-import { horaLocal } from '@/lib/agenda/fuso';
+import { horaLocal, somarDias } from '@/lib/agenda/fuso';
 import { formatarReais, formatarTelefone } from '@/lib/ui/formato';
 import type { Agendamento, Contato, Profissional, Servico } from '@/lib/tipos';
 
@@ -168,7 +168,10 @@ export function FormAgendamento({ aberto, aoFechar, aoSalvar, servicos, profissi
           {livres === null ? (
             <p className="text-sm text-texto-3">Buscando horários livres…</p>
           ) : livres.every((l) => l.horarios.length === 0) ? (
-            <p className="rounded-xl bg-superficie-2 px-4 py-6 text-center text-sm text-texto-2">Sem horário livre nesse dia. Tente outro dia ou outro profissional.</p>
+            <div className="flex flex-col items-center gap-3 rounded-xl bg-superficie-2 px-4 py-6 text-center text-sm text-texto-2">
+              Sem horário livre nesse dia.
+              <Botao variante="secundario" tamanho="p" onClick={() => setData(somarDias(data, 1))}>Ver o dia seguinte</Botao>
+            </div>
           ) : (
             livres
               .filter((l) => l.horarios.length > 0)

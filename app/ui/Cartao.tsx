@@ -4,7 +4,7 @@ import { cx } from './cx';
 export function Cartao({ className, ...resto }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cx('rounded-cartao border border-borda bg-superficie shadow-[var(--sombra)]', className)}
+      className={cx('min-w-0 rounded-cartao border border-borda bg-superficie shadow-[var(--sombra)]', className)}
       {...resto}
     />
   );
