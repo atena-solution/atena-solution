@@ -342,7 +342,7 @@ export async function obterPlacar(s: Sessao, repo: RepositorioCoach, agoraISO = 
 export async function prepararFollowup(
   s: Sessao, repo: RepositorioCoach, id: string, p: { abas: string[]; whatsappConectado: boolean; texto?: string },
 ) {
-  const r = await carregar(s, repo, id);
+  const r = await carregar(s, repo, id, true);
   const texto = (p.texto ?? r.analise?.followup ?? '').trim();
   if (!texto) throw new ErroCoach(400, 'Ainda não tem mensagem de follow-up.');
   const canal = canalFollowup(p);

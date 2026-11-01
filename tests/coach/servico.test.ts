@@ -140,8 +140,9 @@ describe('isolamento por empresa e papéis', () => {
     await expect(S.obterReuniao(vend1, repo, 'r2')).rejects.toMatchObject({ status: 404 });
     await S.marcarBiblioteca(dono1, repo, 'r2', true);
     expect((await S.obterReuniao(vend1, repo, 'r2')).reuniao.id).toBe('r2');
-    // pode ver, mas não mexer
+    // pode ver, mas não mexer nem mandar follow-up
     await expect(S.analisarReuniao(vend1, repo, 'r2', deps)).rejects.toMatchObject({ status: 403 });
+    await expect(S.prepararFollowup(vend1, repo, 'r2', { abas: [], whatsappConectado: false, texto: 'oi' })).rejects.toMatchObject({ status: 403 });
   });
 
   it('vendedor não edita roteiro nem biblioteca; atendente não usa o Coach', async () => {
