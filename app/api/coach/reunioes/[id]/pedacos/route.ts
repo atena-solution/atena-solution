@@ -1,5 +1,5 @@
 // POST multipart: audio (Blob), trilha, indice, duracaoSeg, inicioSeg (opcional). Guarda no Storage, transcreve e salva o andamento.
-import { armazenamento, autenticar, repositorio, responder } from '@/lib/coach/servidor';
+import { armazenamento, autenticar, exigirCoach, repositorio, responder, usoDaEmpresa } from '@/lib/coach/servidor';
 import { ErroCoach, receberPedaco } from '@/lib/coach/servico';
 import { transcreverPedaco } from '@/lib/integracoes/gemini';
 import type { Trilha } from '@/lib/coach/tipos';
@@ -11,6 +11,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return responder(async () => {
     const { id } = await params;
     const s = await autenticar(req);
+    await exigirCoach(s.empresaId);
     const form = await req.formData();
     const audio = form.get('audio');
     if (!(audio instanceof Blob)) throw new ErroCoach(400, 'Faltou o áudio.');
@@ -31,6 +32,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       undefined,
       (c, b, m) => arm.salvar(c, b, m),
     );
+    await usoDaEmpresa(s.empresaId)('gemini-transcricao', { segundosAudio: Math.round(pedaco.duracaoSeg ?? 0) });
     return { pedaco: { ...pedaco, falas: pedaco.falas.length }, duracaoSeg: reuniao.duracaoSeg, pedacos: reuniao.pedacos.length };
   });
 }

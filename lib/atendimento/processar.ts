@@ -1,7 +1,7 @@
 // Fluxo do Atendimento: webhook → conversa → fila → IA → WhatsApp. E as ações da equipe e do cron.
 // Tudo recebe as dependências (repo, IA, canal) para dar pra testar sem internet.
 
-import type { ClienteIA } from '@/lib/integracoes/claude'
+import { medirIA, type ClienteIA } from '@/lib/integracoes/claude'
 import type { ConteudoEnvio, Credenciais, EventoMensagem, ResultadoEnvio } from '@/lib/integracoes/whatsapp'
 import { lerWebhook } from '@/lib/integracoes/whatsapp'
 import type { RepoAtendimento } from './repositorio'
@@ -29,6 +29,10 @@ export interface Deps {
   agora: () => Date
   /** Transcreve áudio (Gemini — módulo do Coach). Opcional: sem ele a IA só sabe que veio um áudio. */
   transcrever?: (p: { empresaId: string; midiaId: string; mime?: string; token: string }) => Promise<string | null>
+  /** Plano: a aba Atendimento pode agir agora? (teste/pago/carência). Sem ele, libera (testes antigos). */
+  acessoAba?: (empresaId: string) => Promise<{ permitido: boolean; mensagem?: string }>
+  /** Registra tokens gastos pela IA (custo no /admin). */
+  registrarUso?: (empresaId: string, modelo: string, uso: { entrada?: number; saida?: number; cacheLeitura?: number; segundosAudio?: number }) => Promise<void>
   /** Envia web push (opcional). */
   enviarPush?: (p: { empresaId: string; uids: string[]; titulo: string; corpo: string; url: string }) => Promise<void>
 }
@@ -247,6 +251,10 @@ export async function responderConversa(empresaId: string, conversa: Conversa, d
   if (!treino.ligada && !opcoes.forcar) return { acao: 'ignorado', motivo: 'IA desligada' }
   if (conversa.modo === 'humano') return { acao: 'ignorado', motivo: 'equipe assumiu' }
   if (conversa.status !== 'aberta') return { acao: 'ignorado', motivo: 'conversa resolvida' }
+  if (deps.acessoAba) {
+    const acesso = await deps.acessoAba(empresaId)
+    if (!acesso.permitido) return { acao: 'ignorado', motivo: acesso.mensagem ?? 'fora do plano' }
+  }
 
   const [empresa, contato, servicos, profissionais, historico] = await Promise.all([
     repo.empresa(empresaId),
@@ -301,7 +309,7 @@ export async function responderConversa(empresaId: string, conversa: Conversa, d
 
   const agendamentosContato = await repo.agendamentosDoContato(empresaId, contato.id)
   const resposta = await responder({
-    ia: deps.ia,
+    ia: deps.registrarUso ? medirIA(deps.ia, (m, u) => deps.registrarUso!(empresaId, m, u)) : deps.ia,
     treino,
     mensagens: montarMensagens(historico),
     ctx: { repo, empresa, servicos, profissionais, contato, conversa, agora },
@@ -442,6 +450,7 @@ export async function rodarAutomacoes(empresaId: string, deps: Deps) {
   ])
   const cred = await credenciais(deps, empresaId)
   if (!empresa || !conexao || !cred) return { enviadas: 0, puladas: [] as { chave: string; motivo: string }[] }
+  if (deps.acessoAba && !(await deps.acessoAba(empresaId)).permitido) return { enviadas: 0, puladas: [{ chave: '*', motivo: 'fora do plano' }] }
 
   const agendamentos = await repo.agendamentos(empresaId, new Date(agora.getTime() - 3 * DIA).toISOString(), new Date(agora.getTime() + 2 * DIA).toISOString())
   const contatos = new Map<string, Contato>()

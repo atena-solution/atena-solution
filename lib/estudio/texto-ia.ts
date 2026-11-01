@@ -10,13 +10,15 @@ import { lerRespostaLegenda, type TextoPost } from './legenda';
 
 const MODELO = 'claude-sonnet-5-5';
 
-export async function gerarTextoPost(p: PedidoLegenda): Promise<TextoPost> {
+type AoUsar = (modelo: string, uso: { entrada: number; saida: number }) => unknown;
+
+export async function gerarTextoPost(p: PedidoLegenda, aoUsar?: AoUsar): Promise<TextoPost> {
   const { sistema, usuario } = montarPromptLegenda(p);
-  const bruto = process.env.SIMULAR === '1' ? simularResposta(p) : await chamarClaude(sistema, usuario);
+  const bruto = process.env.SIMULAR === '1' ? simularResposta(p) : await chamarClaude(sistema, usuario, aoUsar);
   return lerRespostaLegenda(bruto, p.marca.evitar);
 }
 
-async function chamarClaude(system: string, conteudo: string): Promise<string> {
+async function chamarClaude(system: string, conteudo: string, aoUsar?: AoUsar): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('ANTHROPIC_API_KEY não configurada (ou use SIMULAR=1).');
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -25,7 +27,12 @@ async function chamarClaude(system: string, conteudo: string): Promise<string> {
     body: JSON.stringify({ model: MODELO, max_tokens: 1024, system, messages: [{ role: 'user', content: conteudo }] }),
   });
   if (!resp.ok) throw new Error(`Claude ${resp.status}`);
-  const json = (await resp.json()) as { content?: { type: string; text?: string }[] };
+  const json = (await resp.json()) as { content?: { type: string; text?: string }[]; model?: string; usage?: { input_tokens?: number; output_tokens?: number } };
+  try {
+    await aoUsar?.(json.model || MODELO, { entrada: json.usage?.input_tokens ?? 0, saida: json.usage?.output_tokens ?? 0 });
+  } catch {
+    /* registro de uso não derruba a geração */
+  }
   return (json.content ?? []).filter((c) => c.type === 'text').map((c) => c.text ?? '').join('');
 }
 

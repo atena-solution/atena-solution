@@ -45,6 +45,16 @@ export async function armazenamento(): Promise<Armazenamento> {
   return armazenamentoFirebase(bucketAdmin());
 }
 
+// ---------- Plano ----------
+
+/** Coach no plano e conta não vencida? Senão 402 com a mensagem do plano. */
+export async function exigirCoach(empresaId: string) {
+  const { exigirAba } = await import('../planos/portao');
+  await exigirAba(empresaId, 'coach', 'escrever');
+}
+
+export { usoDaEmpresa } from '../planos/portao';
+
 // ---------- Resposta ----------
 
 /** Roda o handler e transforma ErroCoach/ErroHttp em JSON { erro } com o status certo. */
@@ -56,7 +66,10 @@ export async function responder(fn: () => Promise<unknown>): Promise<Response> {
   } catch (e) {
     if (e instanceof ErroCoach) return Response.json({ erro: e.message }, { status: e.status });
     const st = (e as { status?: number }).status;
-    if (typeof st === 'number' && st >= 400 && st < 500) return Response.json({ erro: (e as Error).message }, { status: st });
+    if (typeof st === 'number' && st >= 400 && st < 500) {
+      const motivo = (e as { decisao?: { motivo?: string } }).decisao?.motivo;
+      return Response.json({ erro: (e as Error).message, ...(motivo ? { motivo } : {}) }, { status: st });
+    }
     console.error('[coach]', e);
     return Response.json({ erro: 'Algo deu errado. Tente de novo.' }, { status: 500 });
   }

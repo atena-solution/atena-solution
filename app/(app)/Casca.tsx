@@ -10,6 +10,8 @@ import { sair } from '@/lib/auth/cliente';
 import { NOME_PAPEL } from '@/lib/auth/permissoes';
 import { Avatar, Logo, ProvedorToast, Esqueleto, cx, ICONES_NAV, Folha } from '@/app/ui';
 import { BuscaGlobal } from './BuscaGlobal';
+import { AvisoPlano } from './plano/AvisoPlano';
+import { ConviteAba } from './plano/ConviteAba';
 
 export function Casca({ children }: { children: ReactNode }) {
   return (
@@ -52,7 +54,7 @@ function TelaCarregando() {
 
 function Moldura({ children }: { children: ReactNode }) {
   const caminho = usePathname();
-  const { empresa } = useSessao();
+  const { empresa, sessao } = useSessao();
   const itens = navegacaoDoPlano(empresa?.plano.abas ?? []);
   const ativo = itemAtivo(caminho, itens);
   const [buscaAberta, setBuscaAberta] = useState(false);
@@ -120,13 +122,18 @@ function Moldura({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topo abrirBusca={() => setBuscaAberta(true)} />
+        <AvisoPlano />
         {empresa && !empresa.onboardingConcluido && (
           <Link href="/onboarding" className="flex items-center justify-center gap-2 border-b border-acento-1/20 bg-acento-1/10 px-4 py-2 text-center text-[13px] text-acento">
             Falta pouco para a Atena começar a trabalhar. <strong className="font-semibold">Terminar configuração →</strong>
           </Link>
         )}
         <main id="conteudo" className="mx-auto w-full max-w-[1280px] flex-1 px-4 pb-28 pt-6 md:px-8 md:pb-10">
-          {children}
+          {ativo?.bloqueada && ativo.aba ? (
+            <ConviteAba aba={ativo.aba} podeContratar={sessao?.papel === 'dono' || sessao?.papel === 'gestor'} />
+          ) : (
+            children
+          )}
         </main>
       </div>
 

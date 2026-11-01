@@ -1,5 +1,5 @@
 // GET: lista (?contatoId=). POST: cria reunião (gravação ou arquivo; no arquivo devolve a URL de envio direto).
-import { armazenamento, autenticar, novoId, repositorio, responder } from '@/lib/coach/servidor';
+import { armazenamento, autenticar, exigirCoach, novoId, repositorio, responder } from '@/lib/coach/servidor';
 import { criarReuniao, listarReunioes, type NovaReuniao } from '@/lib/coach/servico';
 
 export async function GET(req: Request) {
@@ -15,6 +15,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   return responder(async () => {
     const s = await autenticar(req);
+    await exigirCoach(s.empresaId);
     const corpo = (await req.json()) as NovaReuniao;
     const reuniao = await criarReuniao(s, await repositorio(), corpo, novoId());
     const envio = reuniao.arquivo ? await (await armazenamento()).urlEnvio(reuniao.arquivo.caminho, reuniao.arquivo.mime) : null;

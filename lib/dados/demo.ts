@@ -34,6 +34,12 @@ export async function semearDemo(b: Banco, agora = new Date()) {
     onboardingConcluido: true,
   };
   await b.gravar(juntar('empresas', empresa.id), empresa);
+  // Demo com o pacote completo pago (assim a IA, o Coach e o Estúdio funcionam na demonstração).
+  await b.gravar(juntar('empresas', empresa.id, 'cobranca', 'assinatura'), {
+    empresaId: empresa.id, planoId: 'completo', vendedores: 3, ciclo: 'mensal',
+    pagoAte: new Date(agora.getTime() + 20 * 86400000).toISOString(),
+    criadoEm: empresa.criadoEm, atualizadoEm: agora.toISOString(),
+  });
   const outra = { ...montarEmpresa(DEMO.outraEmpresaId, { nome: 'Barbearia Outra (teste)', segmento: 'Barbearia' }, agora), onboardingConcluido: true };
   await b.gravar(juntar('empresas', outra.id), outra);
 

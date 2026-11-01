@@ -245,3 +245,26 @@ describe('IA simulada (SIMULAR=1)', () => {
     expect(await amb.repo.agendamentosDoContato('e1', contato.id)).toHaveLength(1)
   })
 })
+
+describe('plano e uso de IA (junção)', () => {
+  it('fora do plano a IA não responde (nem chama a Claude)', async () => {
+    const ia = iaRoteirizada([texto('Oi!')])
+    const amb = await ambiente(ia)
+    amb.deps.acessoAba = async (e) => ({ permitido: e !== 'e1', mensagem: 'Seu plano venceu.' })
+    const [i] = (await receberWebhook(msg('PN1', 'oi'), amb.deps)).itens
+    amb.avancar(9000)
+    expect(await processarItem(i.itemId, i.empresaId, amb.deps)).toMatchObject({ acao: 'ignorado', motivo: 'Seu plano venceu.' })
+    expect(ia.pedidos).toHaveLength(0)
+    expect(amb.enviadas).toHaveLength(0)
+  })
+  it('registra os tokens de cada chamada na empresa certa', async () => {
+    const ia = iaRoteirizada([{ ...texto('Oi!'), modelo: 'claude-sonnet-5-5', uso: { entrada: 1200, saida: 40 } }])
+    const amb = await ambiente(ia)
+    const usos: unknown[] = []
+    amb.deps.registrarUso = async (e, m, u) => void usos.push([e, m, u])
+    const [i] = (await receberWebhook(msg('PN2', 'oi'), amb.deps)).itens
+    amb.avancar(9000)
+    expect((await processarItem(i.itemId, i.empresaId, amb.deps)).acao).toBe('respondeu')
+    expect(usos).toEqual([['e2', 'claude-sonnet-5-5', { entrada: 1200, saida: 40 }]])
+  })
+})

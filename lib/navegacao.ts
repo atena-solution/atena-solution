@@ -26,7 +26,7 @@ export const NAVEGACAO: ItemNavegacao[] = [
 ];
 
 /** Item ativo para o caminho atual (o prefixo mais longo vence). */
-export function itemAtivo(caminho: string, itens: ItemNavegacao[] = NAVEGACAO): ItemNavegacao | undefined {
+export function itemAtivo<T extends ItemNavegacao>(caminho: string, itens: T[] = NAVEGACAO as T[]): T | undefined {
   return itens
     .filter((i) => caminho === i.href || caminho.startsWith(i.href + '/'))
     .sort((a, b) => b.href.length - a.href.length)[0];

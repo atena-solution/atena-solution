@@ -36,6 +36,25 @@ export interface RespostaIA {
   content: BetaContentBlock[]
   stop_reason: BetaStopReason | null
   modelo?: string
+  /** Tokens gastos (para o custo estimado no /admin). */
+  uso?: { entrada: number; saida: number; cacheLeitura?: number }
+}
+
+/** Embrulha o cliente para avisar o uso de cada chamada (registrarUsoIA). Nunca derruba a resposta. */
+export function medirIA(ia: ClienteIA, aoUsar: (modelo: string, uso: NonNullable<RespostaIA['uso']>) => unknown): ClienteIA {
+  return {
+    async criar(p) {
+      const r = await ia.criar(p)
+      if (r.uso) {
+        try {
+          await aoUsar(r.modelo ?? (p.rapido ? MODELO_RAPIDO : MODELO_CONVERSA), r.uso)
+        } catch {
+          /* registro de uso nunca atrapalha o atendimento */
+        }
+      }
+      return r
+    },
+  }
 }
 
 export interface ClienteIA {
@@ -68,7 +87,13 @@ export function iaReal(): ClienteIA {
         // Server-side fallback: só no Sonnet 5.5 e só na Claude API.
         ...(modelo === MODELO_CONVERSA ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
       })
-      return { content: r.content, stop_reason: r.stop_reason, modelo: r.model }
+      const u = r.usage
+      return {
+        content: r.content,
+        stop_reason: r.stop_reason,
+        modelo: r.model,
+        uso: { entrada: u.input_tokens ?? 0, saida: u.output_tokens ?? 0, cacheLeitura: u.cache_read_input_tokens ?? 0 },
+      }
     },
   }
 }

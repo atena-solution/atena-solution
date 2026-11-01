@@ -8,6 +8,7 @@ import { RepoBanco, atomicoLocal } from './repo-banco'
 import { cifrar, decifrar } from './cripto'
 import { criarEnviarPush } from './push'
 import { semearAtendimentoDemo } from './demo'
+import { decidirAba, usoDaEmpresa } from '@/lib/planos/portao'
 import type { CanalWhatsApp, Deps } from './processar'
 
 /** Chave fixa SÓ para o modo simulado (nunca usada com dados reais). */
@@ -55,6 +56,8 @@ export async function depsAtendimento(): Promise<Deps> {
     decifrar: decifrarToken,
     agora: () => new Date(),
     enviarPush: criarEnviarPush(repo),
+    acessoAba: (empresaId) => decidirAba(empresaId, 'atendimento', 'escrever'),
+    registrarUso: (empresaId, modelo, uso) => usoDaEmpresa(empresaId)(modelo, uso),
   }
 }
 
