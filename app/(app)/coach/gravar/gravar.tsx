@@ -8,7 +8,7 @@ import { validarArquivo } from '@/lib/coach/gravacao';
 import { formatarTempo } from '@/lib/coach/transcricao';
 import type { ModoGravacao, Reuniao, Trilha } from '@/lib/coach/tipos';
 import { api, cabecalhosAuth } from '../_componentes/api';
-import { Aviso, Botao, Campo, Cartao, classeEntrada } from '../_componentes/ui';
+import { Aviso, Botao, CabecalhoPagina, Campo, Cartao, classeEntrada } from '../_componentes/ui';
 
 type Fase = 'escolher' | 'gravando' | 'finalizando' | 'enviando-arquivo' | 'transcrevendo' | 'analisando';
 
@@ -161,10 +161,7 @@ export function Gravar() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="titulo-serif text-4xl">Gravar reunião</h1>
-        <p className="mt-1 text-sm text-[var(--coach-suave)]">Avise o cliente que a conversa vai ser gravada pra melhorar o atendimento.</p>
-      </header>
+      <CabecalhoPagina titulo="Gravar reunião" descricao="Avise o cliente que a conversa vai ser gravada pra melhorar o atendimento." />
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
       {avisos.map((a, i) => <Aviso key={i}>{a}</Aviso>)}
@@ -178,12 +175,12 @@ export function Gravar() {
                 role="radio"
                 aria-checked={modo === m.id}
                 onClick={() => setModo(m.id)}
-                className={`rounded-[14px] border p-4 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--coach-acento)] ${
-                  modo === m.id ? 'border-[var(--coach-acento)] bg-[var(--coach-acento-suave)]' : 'border-[var(--coach-borda)] bg-[var(--coach-cartao)] hover:border-[var(--coach-acento)]'
+                className={`rounded-[14px] border p-4 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-coach ${
+                  modo === m.id ? 'border-coach bg-coach/10' : 'border-borda bg-superficie hover:border-coach'
                 }`}
               >
                 <p className="font-medium">{m.titulo}</p>
-                <p className="mt-1 text-sm text-[var(--coach-suave)]">{m.texto}</p>
+                <p className="mt-1 text-sm text-texto-2">{m.texto}</p>
               </button>
             ))}
           </div>
@@ -199,7 +196,7 @@ export function Gravar() {
           {modo === 'arquivo' ? (
             <Cartao>
               <div className="flex flex-wrap items-center gap-4">
-                <input type="file" accept="audio/*,video/*" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} className="text-sm file:mr-3 file:rounded-[10px] file:border file:border-[var(--coach-borda)] file:bg-[var(--coach-cartao)] file:px-3 file:py-2 file:text-sm" />
+                <input type="file" accept="audio/*,video/*" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} className="text-sm file:mr-3 file:rounded-[10px] file:border file:border-borda file:bg-superficie file:px-3 file:py-2 file:text-sm" />
                 <Botao variante="principal" onClick={enviarArquivo} disabled={!arquivo}>Enviar e analisar</Botao>
               </div>
             </Cartao>
@@ -207,7 +204,7 @@ export function Gravar() {
             <div className="flex flex-wrap items-center gap-4">
               <Botao variante="principal" onClick={comecar} className="px-6 py-3 text-base">● Começar a gravar</Botao>
               {modo === 'duas-trilhas' && (
-                <p className="max-w-lg text-sm text-[var(--coach-suave)]">O navegador vai pedir o microfone e depois pra escolher a aba da reunião: escolha a aba e marque <strong>“Compartilhar áudio da guia”</strong>.</p>
+                <p className="max-w-lg text-sm text-texto-2">O navegador vai pedir o microfone e depois pra escolher a aba da reunião: escolha a aba e marque <strong>“Compartilhar áudio da guia”</strong>.</p>
               )}
             </div>
           )}
@@ -217,22 +214,22 @@ export function Gravar() {
       {gravando && (
         <Cartao>
           <div className="flex flex-col items-center gap-5 py-6 text-center">
-            <div className="flex items-center gap-2 text-sm text-[var(--coach-erro)]"><span className="pulso h-2.5 w-2.5 rounded-full bg-[var(--coach-erro)]" />{fase === 'gravando' ? 'Gravando' : 'Finalizando'}</div>
-            <p className="num text-6xl">{formatarTempo(segundos)}</p>
+            <div className="flex items-center gap-2 text-sm text-erro"><span className="animate-pulse h-2.5 w-2.5 rounded-full bg-erro" />{fase === 'gravando' ? 'Gravando' : 'Finalizando'}</div>
+            <p className="numero text-6xl">{formatarTempo(segundos)}</p>
             <div className="flex w-full max-w-sm flex-col gap-2">
               {(Object.keys(niveis) as Trilha[]).map((t) => (
                 <div key={t} className="flex items-center gap-3 text-xs">
-                  <span className="w-20 text-right text-[var(--coach-suave)]">{t === 'cliente' ? 'Cliente (aba)' : t === 'vendedor' ? 'Você' : 'Microfone'}</span>
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--coach-borda)]">
-                    <div className="h-full rounded-full bg-[var(--coach-acento)] transition-[width] duration-100" style={{ width: `${Math.round((niveis[t] ?? 0) * 100)}%` }} />
+                  <span className="w-20 text-right text-texto-2">{t === 'cliente' ? 'Cliente (aba)' : t === 'vendedor' ? 'Você' : 'Microfone'}</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-superficie-2">
+                    <div className="h-full rounded-full bg-coach transition-[width] duration-100" style={{ width: `${Math.round((niveis[t] ?? 0) * 100)}%` }} />
                   </div>
                 </div>
               ))}
             </div>
-            <p className="text-sm text-[var(--coach-suave)]">
-              A cada 5 minutos um pedaço é salvo e transcrito. <span className="num">{enviados}</span> salvo(s)
-              {fila.pendentes > 0 && <> · <span className="num">{fila.pendentes}</span> na fila</>}
-              {fila.falhas > 0 && <> · <span className="num text-[var(--coach-erro)]">{fila.falhas}</span> com falha</>}
+            <p className="text-sm text-texto-2">
+              A cada 5 minutos um pedaço é salvo e transcrito. <span className="numero">{enviados}</span> salvo(s)
+              {fila.pendentes > 0 && <> · <span className="numero">{fila.pendentes}</span> na fila</>}
+              {fila.falhas > 0 && <> · <span className="numero text-erro">{fila.falhas}</span> com falha</>}
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               {fase === 'gravando' && <Botao variante="perigo" onClick={encerrar}>■ Encerrar e analisar</Botao>}
@@ -249,10 +246,10 @@ export function Gravar() {
             <p className="font-medium">
               {fase === 'enviando-arquivo' ? 'Enviando a gravação…' : fase === 'transcrevendo' ? 'Transcrevendo…' : 'Analisando a reunião…'}
             </p>
-            <div className="h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-[var(--coach-borda)]">
-              <div className="h-full rounded-full [background:var(--coach-grad)] transition-[width] duration-300" style={{ width: `${fase === 'enviando-arquivo' ? progresso.pct : fase === 'transcrevendo' ? (progresso.total ? (progresso.feitas / progresso.total) * 100 : 5) : 90}%` }} />
+            <div className="h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-superficie-2">
+              <div className="h-full rounded-full gradiente-atena transition-[width] duration-300" style={{ width: `${fase === 'enviando-arquivo' ? progresso.pct : fase === 'transcrevendo' ? (progresso.total ? (progresso.feitas / progresso.total) * 100 : 5) : 90}%` }} />
             </div>
-            <p className="text-sm text-[var(--coach-suave)]">
+            <p className="text-sm text-texto-2">
               {fase === 'transcrevendo' && progresso.total > 0 ? `Parte ${progresso.feitas} de ${progresso.total}. ` : ''}
               Pode levar alguns minutos. Não feche esta aba.
             </p>

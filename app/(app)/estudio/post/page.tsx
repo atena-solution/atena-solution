@@ -148,7 +148,7 @@ export default function PostPage() {
         <div className="grid lg:grid-cols-[minmax(0,1fr)_400px] gap-6 items-start">
           <div className="max-w-[560px] w-full mx-auto">
             {kit && post.arte && <Arte ref={arte} modelo={post.modelo!} formato={post.formato!} marca={kit} textos={textos} fundo={post.arte.fundo} fotosReais={post.arte.fotosReais} aoAvisar={setAvisos} />}
-            {avisos.map((a) => <p key={a} className="text-xs text-[#B07818] mt-2">{a}</p>)}
+            {avisos.map((a) => <p key={a} className="text-xs text-atencao mt-2">{a}</p>)}
           </div>
           <div className="space-y-4">
             <Cartao className="p-5 space-y-4">

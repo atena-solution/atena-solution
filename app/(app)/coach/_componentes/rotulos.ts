@@ -28,8 +28,8 @@ export function dataHora(iso: string) {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 }
 export function corNota(n: number | null | undefined) {
-  if (n === null || n === undefined) return 'var(--coach-suave)';
-  return n >= 8 ? 'var(--coach-ok)' : n >= 6 ? 'var(--coach-atencao)' : 'var(--coach-erro)';
+  if (n === null || n === undefined) return 'var(--texto-2)';
+  return n >= 8 ? 'var(--sucesso)' : n >= 6 ? 'var(--atencao)' : 'var(--erro)';
 }
 
 /** Nota com uma casa e vírgula: 7,5 */

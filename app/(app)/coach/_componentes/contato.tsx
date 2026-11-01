@@ -12,8 +12,8 @@ import { nota, corNota, dataCurta, RESULTADO, STATUS } from './rotulos';
 export function BotaoGravarReuniao({ contato }: { contato: { id: string; nome?: string; telefone?: string } }) {
   const q = new URLSearchParams({ contatoId: contato.id, ...(contato.nome ? { nome: contato.nome } : {}), ...(contato.telefone ? { telefone: contato.telefone } : {}) });
   return (
-    <Link href={`/coach/gravar?${q}`} className="inline-flex items-center gap-2 rounded-[10px] border border-[var(--coach-borda,#E6E2D9)] px-3 py-1.5 text-sm hover:border-[#7048E8]">
-      <span className="h-2 w-2 rounded-full bg-[#E5484D]" aria-hidden /> Gravar reunião
+    <Link href={`/coach/gravar?${q}`} className="inline-flex items-center gap-2 rounded-[10px] border border-borda bg-superficie px-3 py-1.5 text-sm hover:border-coach">
+      <span className="h-2 w-2 rounded-full bg-erro" aria-hidden /> Gravar reunião
     </Link>
   );
 }
@@ -33,7 +33,7 @@ export function ReunioesDoContato({ contatoId }: { contatoId: string }) {
           <Link href={`/coach/reunioes/${r.id}`} className="flex items-center justify-between gap-3 text-sm hover:underline">
             <span>Reunião · {dataCurta(r.criadoEm)} · {r.vendedorNome}</span>
             {r.analise ? (
-              <span className="flex items-center gap-2"><Selo tom={RESULTADO[r.analise.resultado].tom}>{RESULTADO[r.analise.resultado].texto}</Selo><span className="num" style={{ color: corNota(r.analise.nota) }}>{nota(r.analise.nota)}</span></span>
+              <span className="flex items-center gap-2"><Selo tom={RESULTADO[r.analise.resultado].tom}>{RESULTADO[r.analise.resultado].texto}</Selo><span className="numero" style={{ color: corNota(r.analise.nota) }}>{nota(r.analise.nota)}</span></span>
             ) : <Selo>{STATUS[r.status]}</Selo>}
           </Link>
         </li>
@@ -46,11 +46,11 @@ export function CartaoCoachInicio() {
   const [d, setD] = useState<{ reunioesHoje: number; notaMediaSemana: number | null; fechamentosSemana: number } | null>(null);
   useEffect(() => { api<typeof d>('/api/coach/placar?resumo=1').then(setD).catch(() => {}); }, []);
   return (
-    <Cartao titulo="Coach" acao={<Link href="/coach" className="text-xs text-[#7048E8]">Abrir</Link>}>
+    <Cartao titulo="Coach" acao={<Link href="/coach" className="text-xs font-medium text-coach hover:underline">Abrir</Link>}>
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div><p className="num text-2xl">{d?.reunioesHoje ?? '—'}</p><p className="text-xs text-[var(--coach-suave,#6B6F78)]">reuniões hoje</p></div>
-        <div><p className="num text-2xl" style={{ color: corNota(d?.notaMediaSemana) }}>{nota(d?.notaMediaSemana)}</p><p className="text-xs text-[var(--coach-suave,#6B6F78)]">nota da semana</p></div>
-        <div><p className="num text-2xl">{d?.fechamentosSemana ?? '—'}</p><p className="text-xs text-[var(--coach-suave,#6B6F78)]">fechamentos</p></div>
+        <div><p className="numero text-2xl">{d?.reunioesHoje ?? '—'}</p><p className="text-xs text-texto-2">reuniões hoje</p></div>
+        <div><p className="numero text-2xl" style={{ color: corNota(d?.notaMediaSemana) }}>{nota(d?.notaMediaSemana)}</p><p className="text-xs text-texto-2">nota da semana</p></div>
+        <div><p className="numero text-2xl">{d?.fechamentosSemana ?? '—'}</p><p className="text-xs text-texto-2">fechamentos</p></div>
       </div>
     </Cartao>
   );
