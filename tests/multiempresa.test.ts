@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { BancoMemoria, juntar, segmentoSeguro } from '@/lib/dados/banco';
 import { daEmpresa } from '@/lib/dados/empresa';
 import { podeAcessar, podeAlterarMembro, ESCRITA_POR_COLECAO } from '@/lib/auth/permissoes';
-import { exigirEmpresa, lerTokenSimulado, resolverSessao, lerBearer } from '@/lib/auth/servidor';
+import { exigirEmpresa, lerTokenSimulado, resolverSessao, lerBearer, verificarIdToken } from '@/lib/auth/servidor';
 import { aceitarConvitePendente, convidar, criarEmpresa } from '@/lib/base/empresas';
 import { ErroHttp } from '@/lib/auth/erros';
 import { COLECOES, type Membro } from '@/lib/tipos';
@@ -115,6 +115,8 @@ describe('autenticação no servidor', () => {
     it('401 sem token ou token inválido; token simulado não vale fora do modo simulado', async () => {
       await expect(exigirEmpresa(req(), undefined, ctx())).rejects.toMatchObject({ status: 401 });
       await expect(exigirEmpresa(req('lixo'), undefined, ctx())).rejects.toMatchObject({ status: 401 });
+      expect(await verificarIdToken('simulado:dono:dono@a.com', false)).toBeNull();
+      await expect(exigirEmpresa(req('simulado:dono:dono@a.com'), undefined, { banco: b, simulado: false })).rejects.toMatchObject({ status: 401 });
     });
 
     it('403 quando tenta usar a empresa de outro pelo header', async () => {

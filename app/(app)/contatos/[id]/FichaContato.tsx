@@ -95,7 +95,7 @@ export function FichaContato({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[340px_1fr]">
         <div className="flex flex-col gap-5">
           <Cartao>
             <CabecalhoCartao
