@@ -8,7 +8,7 @@ import { ONBOARDING_VAZIO, PASSOS, concluido, marcarFeito, progresso, proximoPas
  * Progresso do onboarding guiado (/comecar). Guardado em `empresas/{id}.onboarding`.
  * (Os dados da empresa e os serviços vão pelas rotas da Base: PATCH /api/empresa e POST /api/servicos.)
  */
-export const GET = rota(undefined, async (_req, { dados }) => {
+export const GET = rota(undefined, async (_req, { dados, sessao }) => {
   const empresa = (await dados.obterEmpresa()) as { onboarding?: EstadoOnboarding; onboardingConcluido?: boolean } | null;
   const estado = { ...ONBOARDING_VAZIO, ...(empresa?.onboarding ?? {}) };
   // Quem chega aqui já tem conta e empresa.
@@ -17,6 +17,10 @@ export const GET = rota(undefined, async (_req, { dados }) => {
   // Serviços já cadastrados (ex.: pelo onboarding da Base em /onboarding) contam como passo feito.
   // O onboarding da Base concluído também (já perguntou horários e serviços).
   if (!base.feitos.includes('servicos') && (empresa?.onboardingConcluido || (await dados.listar('servicos')).length > 0)) base = marcarFeito(base, 'servicos', quando);
+  // IA já treinada (pela tela do Atendimento) e WhatsApp já conectado também não são perguntados de novo.
+  const b = await banco();
+  if (!base.feitos.includes('treinar') && (await b.obter(juntar('empresas', sessao.empresaId, 'atendimento', 'treino')))) base = marcarFeito(base, 'treinar', quando);
+  if (!base.feitos.includes('whatsapp') && (await b.obter(juntar('empresas', sessao.empresaId, 'atendimento', 'conexao')))) base = marcarFeito(base, 'whatsapp', quando);
   return Response.json({ estado: base, proximo: proximoPasso(base), progresso: progresso(base), concluido: concluido(base) });
 });
 

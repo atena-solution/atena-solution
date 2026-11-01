@@ -9,8 +9,11 @@ import { tempoRelativo } from '@/lib/ui/formato'
 import type { Conversa, Mensagem } from '@/lib/atendimento/tipos'
 
 export function ConversaDoContato({ contatoId, telefone }: { contatoId: string; telefone: string }) {
-  const id = `cv_${contatoId}`
-  const { dados, erro } = useDados<{ conversa: Conversa; mensagens: Mensagem[] }>(`/api/whatsapp/conversas/${encodeURIComponent(id)}`)
+  const { dados: resposta, erro: falhou } = useDados<{ conversa: Conversa | null; mensagens: Mensagem[] }>(`/api/whatsapp/conversas/contato/${encodeURIComponent(contatoId)}`)
+  // sem conversa ainda = mesmo caminho do erro (mostra o convite para chamar no WhatsApp)
+  const dados = resposta?.conversa ? { conversa: resposta.conversa, mensagens: resposta.mensagens } : null
+  const erro = falhou || (resposta && !resposta.conversa)
+  const id = dados?.conversa.id ?? ''
   const ultimas = (dados?.mensagens ?? []).slice(-4)
   return (
     <Cartao>

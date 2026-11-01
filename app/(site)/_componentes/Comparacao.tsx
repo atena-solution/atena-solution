@@ -5,7 +5,7 @@ export function Comparacao() {
   const planos = listarPlanos();
   const linhas = tabelaComparacao();
   return (
-    <div className="s-card overflow-x-auto">
+    <div className="s-card relative overflow-x-auto">
       <table className="s-tabela min-w-[640px]">
         <caption className="sr-only">Comparação dos planos</caption>
         <thead>

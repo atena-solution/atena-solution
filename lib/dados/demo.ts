@@ -32,6 +32,7 @@ export async function semearDemo(b: Banco, agora = new Date()) {
     marca: { logoUrl: '', cores: { primaria: '#7048E8', secundaria: '#0F9B8E' }, tom: 'acolhedor, leve e direto' },
     plano: { ...base.plano, creditos: 120 }, // dá pra testar o Estúdio à vontade
     onboardingConcluido: true,
+    onboarding: { feitos: ['conta', 'empresa', 'servicos', 'treinar', 'whatsapp'], pulados: [] },
   };
   await b.gravar(juntar('empresas', empresa.id), empresa);
   // Demo com o pacote completo pago (assim a IA, o Coach e o Estúdio funcionam na demonstração).
