@@ -6,7 +6,7 @@ import type { LinhaPlacar, PontoSemana } from '@/lib/coach/placar';
 import type { Reuniao, Resultado } from '@/lib/coach/tipos';
 import { api } from './_componentes/api';
 import { Aviso, Cartao, Esqueleto, Numero, Selo, Vazio } from './_componentes/ui';
-import { corNota, dataCurta, RESULTADO, STATUS } from './_componentes/rotulos';
+import { nota, corNota, dataCurta, RESULTADO, STATUS } from './_componentes/rotulos';
 import { formatarTempo } from '@/lib/coach/transcricao';
 
 interface Placar {
@@ -58,7 +58,7 @@ export default function PaginaCoach() {
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             <Kpi rotulo={gestor ? 'Reuniões da equipe (8 semanas)' : 'Suas reuniões (8 semanas)'} valor={equipe!.reunioes} />
-            <Kpi rotulo="Nota média" valor={equipe!.nota} cor={corNota(equipe!.nota)} />
+            <Kpi rotulo="Nota média" valor={equipe!.nota} cor={corNota(equipe!.nota)} decimal />
             <Kpi rotulo="Taxa de fechamento" valor={equipe!.taxa} sufixo="%" />
           </div>
 
@@ -67,17 +67,17 @@ export default function PaginaCoach() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="text-left text-xs text-[var(--coach-suave)]">
-                    <tr><th className="py-2 font-normal">Vendedor</th><th className="font-normal">Reuniões</th><th className="font-normal">Nota</th><th className="font-normal">Fecha</th><th className="font-normal">Fala</th><th className="font-normal">Mais esquece</th></tr>
+                    <tr><th className="py-2 pr-3 font-normal">Vendedor</th><th className="pr-3 font-normal">Reuniões</th><th className="pr-3 font-normal">Nota</th><th className="pr-3 font-normal">Fecha</th><th className="hidden pr-3 font-normal sm:table-cell" title="% do tempo que o vendedor falou">Fala</th><th className="hidden font-normal sm:table-cell">Mais esquece</th></tr>
                   </thead>
                   <tbody>
                     {placar.linhas.map((l, i) => (
                       <tr key={l.vendedorUid} className="border-t border-[var(--coach-borda)]">
-                        <td className="py-2.5"><span className="num mr-2 text-xs text-[var(--coach-suave)]">{i + 1}</span>{l.vendedorNome}</td>
+                        <td className="py-2.5 pr-3"><span className="num mr-2 text-xs text-[var(--coach-suave)]">{i + 1}</span>{l.vendedorNome}</td>
                         <td><Numero valor={l.reunioes} /></td>
-                        <td><span className="num font-normal" style={{ color: corNota(l.notaMedia) }}>{l.notaMedia?.toFixed(1) ?? '—'}</span></td>
+                        <td><span className="num font-normal" style={{ color: corNota(l.notaMedia) }}>{nota(l.notaMedia)}</span></td>
                         <td><Numero valor={l.taxaFechamento} sufixo="%" /></td>
-                        <td title="% do tempo que o vendedor falou"><Numero valor={l.falaVendedorMedia} sufixo="%" /></td>
-                        <td className="text-xs text-[var(--coach-suave)]">{l.etapasEsquecidas[0]?.nome ?? '—'}</td>
+                        <td className="hidden sm:table-cell" title="% do tempo que o vendedor falou"><Numero valor={l.falaVendedorMedia} sufixo="%" /></td>
+                        <td className="hidden text-xs text-[var(--coach-suave)] sm:table-cell">{l.etapasEsquecidas[0]?.nome ?? '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -114,7 +114,7 @@ export default function PaginaCoach() {
                     <li key={b.id}>
                       <Link href={`/coach/reunioes/${b.id}`} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--coach-acento-suave)]">
                         <span className="truncate">{b.titulo}<span className="block text-xs text-[var(--coach-suave)]">{b.vendedorNome} · {dataCurta(b.criadoEm)}</span></span>
-                        <span className="num" style={{ color: corNota(b.nota) }}>{b.nota.toFixed(1)}</span>
+                        <span className="num" style={{ color: corNota(b.nota) }}>{nota(b.nota)}</span>
                       </Link>
                     </li>
                   ))}
@@ -134,7 +134,7 @@ export default function PaginaCoach() {
                     </div>
                     <div className="flex items-center gap-2">
                       {r.analise ? <Selo tom={RESULTADO[r.analise.resultado].tom}>{RESULTADO[r.analise.resultado].texto}</Selo> : <Selo>{STATUS[r.status]}</Selo>}
-                      {r.analise && <span className="num w-10 text-right text-lg" style={{ color: corNota(r.analise.nota) }}>{r.analise.nota.toFixed(1)}</span>}
+                      {r.analise && <span className="num w-10 text-right text-lg" style={{ color: corNota(r.analise.nota) }}>{nota(r.analise.nota)}</span>}
                     </div>
                   </Link>
                 </li>
@@ -155,11 +155,11 @@ function resumoEquipe(linhas: LinhaPlacar[]) {
   return { reunioes, nota: an ? Math.round((somaNota / an) * 10) / 10 : null, taxa: an ? Math.round((fechou / an) * 100) : null };
 }
 
-function Kpi({ rotulo, valor, sufixo, cor }: { rotulo: string; valor: number | null; sufixo?: string; cor?: string }) {
+function Kpi({ rotulo, valor, sufixo, cor, decimal }: { rotulo: string; valor: number | null; sufixo?: string; cor?: string; decimal?: boolean }) {
   return (
     <Cartao>
       <p className="text-xs text-[var(--coach-suave)]">{rotulo}</p>
-      <p className="num mt-2 text-4xl" style={cor ? { color: cor } : undefined}>{valor === null ? '—' : `${valor.toLocaleString('pt-BR')}${sufixo ?? ''}`}</p>
+      <p className="num mt-2 text-4xl" style={cor ? { color: cor } : undefined}>{decimal ? nota(valor) : valor === null ? '—' : `${valor.toLocaleString('pt-BR')}${sufixo ?? ''}`}</p>
     </Cartao>
   );
 }

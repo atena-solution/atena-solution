@@ -7,7 +7,7 @@ import { falaNoTempo, formatarTempo } from '@/lib/coach/transcricao';
 import { api } from '../../_componentes/api';
 import { Aviso, Botao, Cartao, Esqueleto, Selo } from '../../_componentes/ui';
 import { Player, type AudioPedaco, type ControlePlayer } from '../../_componentes/player';
-import { corNota, dataHora, ETAPA, RESULTADO, STATUS } from '../../_componentes/rotulos';
+import { nota, corNota, dataHora, ETAPA, RESULTADO, STATUS } from '../../_componentes/rotulos';
 
 interface Dados { reuniao: Omit<Reuniao, 'pedacos'> & { pedacos: Omit<Reuniao['pedacos'][number], 'falas'>[] }; falas: Fala[]; audios: AudioPedaco[]; podeGerir: boolean; podeEditar: boolean }
 
@@ -68,7 +68,7 @@ export default function PaginaReuniao({ params }: { params: Promise<{ id: string
         {a && (
           <div className="text-right">
             <p className="text-xs text-[var(--coach-suave)]">Nota do vendedor</p>
-            <p className="num text-6xl leading-none" style={{ color: corNota(a.nota) }}>{a.nota.toFixed(1)}</p>
+            <p className="num text-6xl leading-none" style={{ color: corNota(a.nota) }}>{nota(a.nota)}</p>
           </div>
         )}
       </header>
@@ -127,7 +127,7 @@ export default function PaginaReuniao({ params }: { params: Promise<{ id: string
                     <div className="bg-[var(--coach-acento)]" style={{ width: `${a.fala.vendedorPct}%` }} />
                     <div className="bg-[var(--coach-ok)]" style={{ width: `${a.fala.clientePct}%` }} />
                   </div>
-                  <p className="mt-2 flex justify-between text-xs"><span className="num">Vendedor {a.fala.vendedorPct}%</span><span className="num">Cliente {a.fala.clientePct}%</span></p>
+                  <p className="mt-2 flex flex-wrap justify-between gap-x-3 text-xs"><span className="num">Vendedor {a.fala.vendedorPct}%</span><span className="num">Cliente {a.fala.clientePct}%</span></p>
                 </Cartao>
               </div>
               <Cartao titulo="Etapas do roteiro">

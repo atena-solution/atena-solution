@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import type { Reuniao } from '@/lib/coach/tipos';
 import { api } from './api';
 import { Cartao, Selo } from './ui';
-import { corNota, dataCurta, RESULTADO, STATUS } from './rotulos';
+import { nota, corNota, dataCurta, RESULTADO, STATUS } from './rotulos';
 
 export function BotaoGravarReuniao({ contato }: { contato: { id: string; nome?: string; telefone?: string } }) {
   const q = new URLSearchParams({ contatoId: contato.id, ...(contato.nome ? { nome: contato.nome } : {}), ...(contato.telefone ? { telefone: contato.telefone } : {}) });
@@ -33,7 +33,7 @@ export function ReunioesDoContato({ contatoId }: { contatoId: string }) {
           <Link href={`/coach/reunioes/${r.id}`} className="flex items-center justify-between gap-3 text-sm hover:underline">
             <span>Reunião · {dataCurta(r.criadoEm)} · {r.vendedorNome}</span>
             {r.analise ? (
-              <span className="flex items-center gap-2"><Selo tom={RESULTADO[r.analise.resultado].tom}>{RESULTADO[r.analise.resultado].texto}</Selo><span className="num" style={{ color: corNota(r.analise.nota) }}>{r.analise.nota.toFixed(1)}</span></span>
+              <span className="flex items-center gap-2"><Selo tom={RESULTADO[r.analise.resultado].tom}>{RESULTADO[r.analise.resultado].texto}</Selo><span className="num" style={{ color: corNota(r.analise.nota) }}>{nota(r.analise.nota)}</span></span>
             ) : <Selo>{STATUS[r.status]}</Selo>}
           </Link>
         </li>
@@ -49,7 +49,7 @@ export function CartaoCoachInicio() {
     <Cartao titulo="Coach" acao={<Link href="/coach" className="text-xs text-[#7048E8]">Abrir</Link>}>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div><p className="num text-2xl">{d?.reunioesHoje ?? '—'}</p><p className="text-xs text-[var(--coach-suave,#6B6F78)]">reuniões hoje</p></div>
-        <div><p className="num text-2xl" style={{ color: corNota(d?.notaMediaSemana) }}>{d?.notaMediaSemana?.toFixed(1) ?? '—'}</p><p className="text-xs text-[var(--coach-suave,#6B6F78)]">nota da semana</p></div>
+        <div><p className="num text-2xl" style={{ color: corNota(d?.notaMediaSemana) }}>{nota(d?.notaMediaSemana)}</p><p className="text-xs text-[var(--coach-suave,#6B6F78)]">nota da semana</p></div>
         <div><p className="num text-2xl">{d?.fechamentosSemana ?? '—'}</p><p className="text-xs text-[var(--coach-suave,#6B6F78)]">fechamentos</p></div>
       </div>
     </Cartao>

@@ -31,3 +31,8 @@ export function corNota(n: number | null | undefined) {
   if (n === null || n === undefined) return 'var(--coach-suave)';
   return n >= 8 ? 'var(--coach-ok)' : n >= 6 ? 'var(--coach-atencao)' : 'var(--coach-erro)';
 }
+
+/** Nota com uma casa e vírgula: 7,5 */
+export function nota(n: number | null | undefined) {
+  return n === null || n === undefined ? '—' : n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
