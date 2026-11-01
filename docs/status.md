@@ -115,6 +115,37 @@ Transcrição (falas de exemplo), análise (regras simples, marcada "Análise si
 
 ## D — Estúdio
 
+**Pronto (01/11/2026, fechado na junção)** — as 7 entregas de `docs/modulos/03-estudio.md`, com a geração **simulada** (`SIMULAR=1` devolve imagens e vídeos de exemplo, sem rede).
+91 testes do Estúdio (`tests/estudio/*`): débito/devolução de créditos, prompts com as regras de fidelidade, composição do texto na arte (quebra de linha, contraste), calendário, galeria, isolamento por empresa.
+
+Ver funcionando: `SIMULAR=1 NEXT_PUBLIC_SIMULAR=1 npm run dev` → entrar com `dono@demo.atena` → **/estudio** (a demo tem 120 créditos).
+
+| Entrega | Onde | Situação |
+|---|---|---|
+| 1. Kit da marca | `/estudio/marca`, `lib/estudio/marca.ts` (`kitDaEmpresa`, `validarKit`) | pronto: logo, cores, fontes, tom, público, palavras a evitar. Começa da marca do onboarding (`empresas/{id}.marca`) e salva no mesmo campo |
+| 2. Foto de produto | `/estudio/foto`, `lib/estudio/prompts.ts` (prompt central de fidelidade) | pronto: 1–5 fotos, 5 estilos, 4 formatos, até 6 variações. Prompt proíbe mudar cor/estampa/forma, inventar texto ou acessório (testado) |
+| 3. Post/arte | `/estudio/post`, `_componentes/Arte.tsx`, `lib/estudio/arte.ts`, `legenda.ts` | pronto: a IA faz só o fundo; título/subtítulo/chamada são desenhados pelo sistema (canvas) com quebra de linha e contraste calculados; legenda e hashtags pela Claude. Modelos promoção, novidade, depoimento, antes/depois (só com foto real enviada) |
+| 4. Vídeo curto | `/estudio/video`, `app/api/estudio/video` (+ `[id]` consulta o andamento) | pronto: vídeo com IA (Veo, 9:16 ou 1:1) **ou** slideshow animado montado no navegador (canvas + MediaRecorder, 0 crédito) |
+| 5. Calendário | `/estudio/calendario`, `lib/estudio/calendario.ts` | pronto: sugestão do mês por segmento (datas comemorativas, dias bons de postar), rascunho editável → gerar arte → marcar publicado. A sugestão é regra pura (sem IA, grátis) |
+| 6. Galeria | `/estudio/galeria`, `lib/estudio/galeria.ts` | pronto: filtros por tipo/formato/busca, baixar (PNG), copiar legenda, reaproveitar em post/vídeo, apagar |
+| 7. Créditos | `/estudio/creditos`, `lib/estudio/creditos.ts` | pronto: foto 2 e post 2 por variação, vídeo 10, slideshow/legenda/calendário 0. Debita ANTES de gerar, devolve na hora se falhar (pura, testada), extrato |
+
+**Ligado na junção (sessão F)**
+- Login da Base (`exigirEmpresa`) e empresa lida do banco da Base (`app/api/estudio/_contexto.ts`).
+- Saldo **único**: `empresas/{id}.plano.creditos`, o mesmo que a cobrança credita; extrato em `empresas/{id}/creditos` (formato `MovimentoCredito`). No simulado: `RepositorioBanco` em cima do banco em memória da Base; no real: `RepositorioFirestore` com transação.
+- Gerar exige o Estúdio no plano e a conta em dia (402 com o motivo); uso de IA registrado (`gemini-imagem`, `gemini-video`, tokens da Claude).
+- Visual: componentes de `app/ui` e tokens da Base (tema claro/escuro do app); cartão no Início (`/api/estudio/resumo`).
+
+**Simulado / precisa de teste ao vivo (no Mac)** — marcado `// CONFIRMAR AO VIVO`
+- Gemini imagem (`gemini-2.5-flash-image`) e Veo (`veo-3.1-generate-preview`): nomes dos modelos (dá pra trocar por `GEMINI_MODELO_IMAGEM` / `GEMINI_MODELO_VIDEO`), formato do pedido e da resposta, `aspectRatio`, fidelidade real ao produto.
+- Vídeo: baixar o arquivo do Veo com a chave e guardar no Storage (o `uri` expira); tempo de geração.
+- Storage: upload das imagens grandes com token de download (`lib/estudio/dependencias.ts`), CORS para baixar PNG no navegador.
+- Claude: legenda/hashtags com a chave real (`lib/estudio/texto-ia.ts`).
+- Slideshow: MediaRecorder no Safari/iPhone (formato `video/mp4`).
+- Firestore real: transação de créditos com várias gerações ao mesmo tempo; índice `creditos (origem, quando)`.
+
+**Variáveis de ambiente**: `GEMINI_API_KEY`, `GEMINI_MODELO_IMAGEM`, `GEMINI_MODELO_VIDEO`, `ANTHROPIC_API_KEY`, `FIREBASE_STORAGE_BUCKET`.
+
 ## E — Site e planos
 
 Atualizado em 01/11/2026. `npm test` (135 testes, todos passando), `npm run typecheck` e `npm run build` ok. Fluxo inteiro testado no navegador em modo simulado: cadastro → onboarding guiado → assinar → fatura → pago → plano ativo → /admin.
