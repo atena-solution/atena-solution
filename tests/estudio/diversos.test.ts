@@ -102,3 +102,16 @@ describe('integração de imagem (simulada)', () => {
     expect(r.pronto && r.url?.startsWith('data:image/svg+xml')).toBe(true);
   });
 });
+
+import { paraMovimento, deMovimento } from '../../lib/estudio/repositorio-firestore';
+describe('extrato no formato da sessão E (MovimentoCredito)', () => {
+  it('débito vira uso negativo e volta igual', () => {
+    const l = { id: 'm1', empresaId: 'e1', tipo: 'debito' as const, valor: 6, saldoDepois: 4, motivo: 'Foto (3x)', criacaoId: 'c1', quando: 'q' };
+    const m = paraMovimento(l);
+    expect(m).toMatchObject({ origem: 'uso', quantidade: -6, referencia: 'c1' });
+    expect(deMovimento(m)).toEqual(l);
+  });
+  it('recarga do plano aparece como recarga', () => {
+    expect(deMovimento({ id: 'p', empresaId: 'e1', origem: 'plano_mensal', quantidade: 100, saldoDepois: 100, descricao: 'Plano', quando: 'q' }).tipo).toBe('recarga');
+  });
+});
