@@ -41,12 +41,12 @@ function Numero({ titulo, valor, detalhe, icone, cor, href, aoVivo }: { titulo: 
 }
 
 export function PainelInicio() {
-  const { empresa, membro } = useSessao();
+  const { empresa, membro, sessao } = useSessao();
   const { dados } = useDados<RespostaInicio>('/api/inicio');
   const fuso = empresa?.fuso ?? 'America/Sao_Paulo';
   const agora = new Date();
   const primeiroNome = (membro?.nome ?? '').split(' ')[0];
-  const cartoesExtras = CARTOES_DAS_ABAS.filter((c) => empresa?.plano.abas.includes(c.aba));
+  const cartoesExtras = CARTOES_DAS_ABAS.filter((c) => empresa?.plano.abas.includes(c.aba) && (!c.papeis || (sessao && c.papeis.includes(sessao.papel))));
 
   return (
     <>
