@@ -15,6 +15,8 @@ export function empresa(id: string, nome = 'Barbearia Topetes'): Empresa {
     telefone: '5511999990000',
     endereco: 'Rua das Flores, 100',
     horarios: horariosSemana,
+    marca: { logoUrl: '', cores: { primaria: '#000', secundaria: '#fff' }, tom: '' },
+    plano: { abas: ['atendimento'], creditos: 0 },
     criadoEm: '2026-10-01T12:00:00.000Z',
   }
 }

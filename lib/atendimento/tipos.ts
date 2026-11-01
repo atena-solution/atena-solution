@@ -1,91 +1,26 @@
-// Tipos do Atendimento.
-// A parte "Base" é cópia do contrato em docs/modulos/00-base.md. Quando o esqueleto da sessão A
-// existir com os tipos oficiais, trocar estes por re-exports de lá (a junção acerta os detalhes).
+// Tipos do Atendimento. A parte "Base" vem do contrato da sessão A (lib/tipos.ts).
 
-// ---------- Base (contrato) ----------
-export type Papel = 'dono' | 'gestor' | 'atendente' | 'vendedor'
+import type { Agendamento as AgendamentoBase } from '@/lib/tipos'
 
-export interface HorarioDia {
-  dia: number // 0 = domingo … 6 = sábado
-  abre: string // 'HH:MM'
-  fecha: string // 'HH:MM'
-}
+export type {
+  Papel,
+  HorarioDia,
+  Empresa,
+  Membro,
+  Contato,
+  Atividade,
+  Servico,
+  Profissional,
+  StatusAgendamento,
+} from '@/lib/tipos'
 
-export interface Empresa {
-  id: string
-  nome: string
-  segmento: string
-  fuso: string // 'America/Sao_Paulo'
-  telefone: string
-  endereco: string
-  horarios: HorarioDia[]
-  marca?: { logoUrl?: string; cores?: { primaria?: string; secundaria?: string }; tom?: string }
-  plano?: { abas: ('atendimento' | 'coach' | 'estudio')[]; creditos: number }
-  criadoEm: string
-}
-
-export interface Membro {
-  uid: string
-  email: string
-  nome: string
-  papel: Papel
-  ativo: boolean
-}
-
-export interface Contato {
-  id: string
-  empresaId: string
-  nome: string
-  telefone: string // E.164 sem "+"
-  email?: string
-  origem: string
-  etapa: string
-  etiquetas: string[]
-  responsavelUid?: string
-  ultimaInteracaoEm: string
-  criadoEm: string
-  campos: Record<string, string>
-}
-
-export interface Atividade {
-  id: string
-  contatoId: string
-  tipo: 'mensagem' | 'agendamento' | 'reuniao' | 'nota' | 'etapa'
-  resumo: string
-  quando: string
-  porUid?: string
-  porIA?: boolean
-}
-
-export interface Servico {
-  id: string
-  nome: string
-  duracaoMin: number
-  preco: number
-  descricao: string
-}
-
-export interface Profissional {
-  id: string
-  nome: string
-  servicosIds: string[]
-  horarios: HorarioDia[]
-}
-
-export type StatusAgendamento = 'marcado' | 'confirmado' | 'compareceu' | 'faltou' | 'cancelado'
-
-export interface Agendamento {
-  id: string
-  contatoId: string
-  servicoId: string
-  profissionalId: string
-  inicio: string // ISO
-  fim: string // ISO
-  status: StatusAgendamento
-  criadoPor: 'ia' | string // 'ia' ou uid
-  lembretes: { vesperaEm?: string; umaHoraEm?: string }
+/** Agendamento do contrato + quando foi criado (usado nas métricas e nos lembretes). */
+export interface Agendamento extends AgendamentoBase {
   criadoEm?: string
 }
+
+/** Ids das etapas padrão do funil (lib/contatos/funil.ts). */
+export const ETAPA = { novo: 'novo', emConversa: 'em-conversa', agendado: 'agendado' } as const
 
 // ---------- Atendimento ----------
 export type Autor = 'cliente' | 'ia' | 'equipe' | 'sistema'

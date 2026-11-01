@@ -5,7 +5,7 @@ import type { Contato, Conversa } from '@/lib/atendimento/tipos'
 import { FUSO, ag, corte, treino } from './fixtures'
 
 const contato: Contato = {
-  id: 'c1', empresaId: 'e1', nome: 'carlos souza', telefone: '5511988887777', origem: 'whatsapp', etapa: 'Agendado',
+  id: 'c1', empresaId: 'e1', nome: 'carlos souza', telefone: '5511988887777', origem: 'whatsapp', etapa: 'agendado',
   etiquetas: [], ultimaInteracaoEm: '', criadoEm: '', campos: {},
 }
 // agendamento terça 03/11 14:00 SP = 17:00Z, criado bem antes

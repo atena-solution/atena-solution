@@ -3,7 +3,7 @@
 
 import type { BetaTool } from '@/lib/integracoes/claude'
 import type { RepoAtendimento } from './repositorio'
-import type { Agendamento, Contato, Conversa, Empresa, Profissional, Servico } from './tipos'
+import { ETAPA, type Agendamento, type Contato, type Conversa, type Empresa, type Profissional, type Servico } from './tipos'
 import { calcularHorariosLivres, conferirHorario } from './horarios'
 import { DIA, descreverInstante, diaLocal, horaLocal, instanteLocal, somarDias } from './tempo'
 
@@ -192,7 +192,11 @@ export async function executarFerramenta(nome: string, input: Record<string, unk
       const prof = ctx.profissionais.find((p) => p.id === criado.profissionalId)?.nome
       const resumo = `${servico.nome} ${descreverInstante(inicio, fuso)}${prof ? ` com ${prof}` : ''}`
       if (!ctx.seco) {
-        await ctx.repo.atualizarContato(ctx.empresa.id, ctx.contato.id, { etapa: 'Agendado' })
+        if (([ETAPA.novo, ETAPA.emConversa, 'perdido'] as string[]).includes(ctx.contato.etapa)) {
+          await ctx.repo.atualizarContato(ctx.empresa.id, ctx.contato.id, { etapa: ETAPA.agendado })
+          await ctx.repo.registrarAtividade(ctx.empresa.id, { contatoId: ctx.contato.id, tipo: 'etapa', resumo: 'Etapa: → Agendado', quando: ctx.agora.toISOString(), porIA: true })
+          ctx.contato.etapa = ETAPA.agendado
+        }
         await ctx.repo.registrarAtividade(ctx.empresa.id, {
           contatoId: ctx.contato.id,
           tipo: 'agendamento',

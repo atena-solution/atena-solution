@@ -79,7 +79,7 @@ describe('IA marca horário com ferramentas', () => {
     const ags = await amb.repo.agendamentosDoContato('e1', contato.id)
     expect(ags).toHaveLength(1)
     expect(ags[0]).toMatchObject({ inicio: '2026-11-03T13:00:00.000Z', profissionalId: 'joao', criadoPor: 'ia', status: 'marcado' })
-    expect(contato.etapa).toBe('Agendado')
+    expect(contato.etapa).toBe('agendado')
     // a resposta de ver_horarios_livres trouxe o horário certo
     const resultado = ia.pedidos[1].mensagens.at(-1)!.content as { type: string; content: string }[]
     expect(resultado[0].content).toContain('"hora":"10:00"')

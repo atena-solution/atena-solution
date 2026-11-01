@@ -5,7 +5,7 @@ import type { ClienteIA } from '@/lib/integracoes/claude'
 import type { ConteudoEnvio, Credenciais, EventoMensagem, ResultadoEnvio } from '@/lib/integracoes/whatsapp'
 import { lerWebhook } from '@/lib/integracoes/whatsapp'
 import type { RepoAtendimento } from './repositorio'
-import type { Agendamento, Autor, Contato, Conversa, Mensagem, TipoMensagem } from './tipos'
+import { ETAPA, type Agendamento, type Autor, type Contato, type Conversa, type Mensagem, type TipoMensagem } from './tipos'
 import { decidirRajada, ESPERA_RAJADA_MS } from './rajada'
 import { detectarAssuntoSensivel, interpretarConfirmacao, primeiroNome } from './regras'
 import { montarMensagens } from './contexto'
@@ -108,7 +108,7 @@ async function receberMensagem(empresaId: string, ev: EventoMensagem, deps: Deps
       nome: ev.nome ?? '',
       telefone: ev.de,
       origem: 'whatsapp',
-      etapa: 'Novo',
+      etapa: ETAPA.novo,
       etiquetas: [],
       ultimaInteracaoEm: agoraISO,
       criadoEm: agoraISO,
@@ -285,7 +285,7 @@ export async function responderConversa(empresaId: string, conversa: Conversa, d
       ...patch,
     })
     const atual = await repo.contato(empresaId, contato.id)
-    if (atual?.etapa === 'Novo') await repo.atualizarContato(empresaId, contato.id, { etapa: 'Em conversa' })
+    if (atual?.etapa === ETAPA.novo) await repo.atualizarContato(empresaId, contato.id, { etapa: ETAPA.emConversa })
   }
 
   if (sensivel) {
