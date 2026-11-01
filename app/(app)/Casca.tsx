@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Search, Moon, Sun, LogOut, ChevronsUpDown, Lock, MoreHorizontal, Check } from 'lucide-react';
 import { ProvedorSessao, useSessao } from '@/lib/sessao';
-import { itemAtivo, navegacaoDoPlano } from '@/lib/navegacao';
+import { itemAtivo, navegacaoDoPapel, navegacaoDoPlano } from '@/lib/navegacao';
 import { sair } from '@/lib/auth/cliente';
 import { NOME_PAPEL } from '@/lib/auth/permissoes';
 import { Avatar, Logo, ProvedorToast, Esqueleto, cx, ICONES_NAV, Folha } from '@/app/ui';
@@ -56,7 +56,7 @@ function TelaCarregando() {
 function Moldura({ children }: { children: ReactNode }) {
   const caminho = usePathname();
   const { empresa, sessao } = useSessao();
-  const itens = navegacaoDoPlano(empresa?.plano.abas ?? []);
+  const itens = navegacaoDoPapel(navegacaoDoPlano(empresa?.plano.abas ?? []), sessao?.papel);
   const ativo = itemAtivo(caminho, itens);
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [maisAberto, setMaisAberto] = useState(false);

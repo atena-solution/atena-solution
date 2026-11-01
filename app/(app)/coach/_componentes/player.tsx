@@ -54,7 +54,9 @@ export const Player = forwardRef<ControlePlayer, { audios: AudioPedaco[]; duraca
 
     useImperativeHandle(ref, () => ({ irPara: (seg, tocar = true) => { setTocando(tocar || tocando); posicionar(seg, tocar || tocando); } }), [posicionar, tocando]);
 
-    useEffect(() => { posicionar(0, false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [audios]);
+    // volta pro começo só quando trocam os áudios (posicionar muda a cada render da velocidade)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { posicionar(0, false); }, [audios]);
     useEffect(() => { for (const tr of trilhas) { const el = els.current[tr]; if (el) el.playbackRate = velocidade; } }, [velocidade, trilhas]);
 
     function aoAtualizar() {

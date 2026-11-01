@@ -36,3 +36,6 @@ export function corNota(n: number | null | undefined) {
 export function nota(n: number | null | undefined) {
   return n === null || n === undefined ? '—' : n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
+
+/** Papéis que usam o Coach (o servidor confere de novo em lib/coach/servidor.ts). */
+export const PAPEIS_COACH_CLIENTE: ('dono' | 'gestor' | 'atendente' | 'vendedor')[] = ['dono', 'gestor', 'vendedor'];

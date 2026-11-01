@@ -65,9 +65,9 @@ responde em ~8s (tira dúvida pelo FAQ, informa preço, consulta a agenda e marc
 
 **Decisões**
 - Dados: repositório único `lib/atendimento/repo-banco.ts` em cima do `Banco` da Base (memória ou Firestore). Conversa = `empresas/{id}/conversas/cv_{contatoId}`, mensagens em `.../mensagens`. Operações atômicas no Firestore em `atomico-firestore.ts` (`create()` + trava por profissional ao marcar).
-- Horários: usa `horariosLivres`/`verificarHorario` da Agenda da Base (mesmas regras), com trava própria contra dois clientes no mesmo horário. Não usei `lib/agenda/operacoes.ts` por falta dessa trava. Na junção vale unificar.
+- Horários: usa `horariosLivres`/`verificarHorario` da Agenda da Base. **Junção (F):** a regra de "horário ocupado" é uma só (`temConflito`) e a trava por profissional é a mesma da Agenda (`lib/agenda/trava.ts`), também ao remarcar.
 - Funil: contato novo do WhatsApp entra em `novo`, vai pra `em-conversa` na 1ª resposta e pra `agendado` quando a IA marca (não volta etapa de quem já é cliente).
-- Áudio do cliente: `Deps.transcrever` está pronto pra receber a transcrição do Gemini da sessão C (`lib/integracoes/gemini.ts`). Ainda não ligado, então hoje a IA só sabe que veio um áudio.
+- Áudio do cliente: **ligado na junção (F)** — baixa o áudio da Meta e transcreve com o Gemini (`transcreverAudioCliente`); a IA responde ao que foi falado.
 
 **Simulado / precisa de teste ao vivo (no Mac)** — tudo marcado `// CONFIRMAR AO VIVO`
 - Meta: número de teste, URL do webhook + token de verificação, assinatura, envio de texto/modelo/mídia, indicador "digitando", download de mídia, erro 131047 (janela fechada), versão da Graph API (`WHATSAPP_GRAPH_VERSAO`, padrão v23.0). Criar e aprovar os 4 modelos (lembrete, recuperação, avaliação, retomada) com as variáveis descritas na tela de conexão.
@@ -95,16 +95,10 @@ Testado também no navegador (Next de teste, `SIMULAR=1`, Chromium com microfone
 - **Multi-empresa**: toda regra recebe a sessão com `empresaId`; reunião de outra empresa responde 404; caminhos do Storage checados (`empresas/{id}/reunioes/...`). Papéis: dono/gestor/vendedor usam; atendente não; só dono/gestor editam roteiro e biblioteca; vendedor vê e mexe só nas próprias (e vê as da biblioteca).
 
 ### Simulado (`SIMULAR=1`)
-Transcrição (falas de exemplo), análise (regras simples, marcada "Análise simulada"), banco e Storage em memória do servidor, login (sessão demo; cabeçalhos `x-sim-uid`, `x-sim-empresa`, `x-sim-papel` pra testar papéis).
+Transcrição (falas de exemplo), análise (regras simples, marcada "Análise simulada"), banco e Storage em memória do servidor (áudio servido por URL assinada simulada). Login: o mesmo da Base (`bruno@demo.atena` = vendedor).
 
-### Falta na junção com a Base (A) — pontos marcados `JUNÇÃO`
-- `lib/coach/servidor.ts → autenticar`: trocar pelo `exigirEmpresa(req, ['dono','gestor','vendedor'])`; `garantirFirebase` pelo init do Admin SDK da Base; `dadosEmpresa` pelo leitor de empresa da Base.
-- `app/(app)/coach/_componentes/api.ts → cabecalhosAuth`: mandar o idToken do Firebase.
-- `_componentes/ui.tsx` e as variáveis `--coach-*` do `layout.tsx`: trocar pelos componentes/tokens de `app/ui`.
-- Ficha do contato: colocar `BotaoGravarReuniao` e `ReunioesDoContato`; Início: `CartaoCoachInicio`.
-- `firestore.indexes.json`: `reunioes` (vendedorUid ASC, criadoEm DESC) e (contatoId ASC, criadoEm DESC). Regras: `empresas/{id}/reunioes` e `empresas/{id}/coach` só pra membros da empresa; Storage `empresas/{id}/reunioes/**` idem.
-- Follow-up pelo número da empresa: chamar o envio do Atendimento (B) em `app/api/coach/reunioes/[id]/followup/route.ts`.
-- Plano/créditos (E): bloquear criar/analisar quando a aba Coach não estiver no plano ou a conta estiver só leitura.
+### Junção (sessão F) — feito
+Login da Base (`exigirEmpresa` dono/gestor/vendedor), Admin SDK e empresa da Base; componentes de `app/ui`; ficha do contato (Gravar reunião + Reuniões) e cartão no Início; índices e regras (vendedor lê só as próprias e as da biblioteca); follow-up pelo WhatsApp da empresa (envio do Atendimento, janela de 24h, cai no wa.me se recusar); plano exigido para criar/gravar/analisar (402) e uso de IA registrado.
 
 ### Testar ao vivo (no Mac)
 - Gemini: formato da resposta com `responseSchema`, precisão dos tempos, Files API (upload resumível, estado ACTIVE), janelas de 10 min sem repetir falas na borda — tudo marcado `CONFIRMAR AO VIVO`.
@@ -160,10 +154,10 @@ Atualizado em 01/11/2026. `npm test` (135 testes, todos passando), `npm run type
 | Extra | **`/plano`** e Configurações → Plano | tela do cliente: situação, Pagar agora, Já paguei, trocar plano (mensal/anual, vendedores), comprar créditos, extrato, pagamentos, cancelar renovação |
 
 ### Para as outras sessões (contrato)
-- **Acesso por aba** (usar antes de agir): `podeUsarAba(assinatura, aba, 'ler'|'escrever', agora)` em `lib/planos/acesso.ts`, ou no servidor `lerAcesso(await depsCobranca(), empresaId)` (`lib/cobranca`). Atendimento: checar `'escrever'` antes da IA responder; Coach: antes de analisar; Estúdio: antes de gerar. Hoje ninguém chama ainda — **B, C e D precisam ligar**.
+- **Acesso por aba** (usar antes de agir): `podeUsarAba(assinatura, aba, 'ler'|'escrever', agora)` em `lib/planos/acesso.ts`, ou no servidor `lerAcesso(await depsCobranca(), empresaId)` (`lib/cobranca`). Ligado na junção (F) por `decidirAba`/`exigirAba` (`lib/planos/portao.ts`): Atendimento antes da IA responder e das automações; Coach antes de criar/gravar/analisar; Estúdio antes de gerar.
 - `Empresa.plano.abas` = abas do plano contratado (o menu da Base já usa); `Empresa.plano.creditos` = saldo único; extrato em `empresas/{id}/creditos/{movId}` (formato `MovimentoCredito`, já usado pelo Estúdio).
-- **Uso de IA**: depois de cada chamada, `registrarUsoIA(banco, empresaId, modelo, { entrada, saida })` (`lib/planos/uso.ts`) → alimenta o custo no /admin. Ninguém registra ainda.
-- **Faixa de aviso** do plano: `<AvisoPlano />` em `app/(app)/plano/AvisoPlano.tsx` — **a Base precisa colocar no topo da Moldura** (`app/(app)/Casca.tsx`).
+- **Uso de IA**: depois de cada chamada, `registrarUsoIA(banco, empresaId, modelo, { entrada, saida })` (`lib/planos/uso.ts`) → alimenta o custo no /admin. Ligado na junção (F) em todas as chamadas de IA (Claude, transcrição, imagem, vídeo).
+- **Faixa de aviso** do plano: `<AvisoPlano />` em `app/(app)/plano/AvisoPlano.tsx` — já no topo da moldura (`app/(app)/Casca.tsx`). Aba fora do plano mostra `ConviteAba` (convite, não erro).
 - Empresa sem assinatura (demo, criada por outro caminho) ganha o teste automaticamente, contado da data de criação, na 1ª leitura de `/api/cobranca`.
 
 ### Simulado / falta testar ao vivo (no Mac)
@@ -176,7 +170,54 @@ Atualizado em 01/11/2026. `npm test` (135 testes, todos passando), `npm run type
 `ASAAS_API_KEY` (sem ela = simulado), `ASAAS_BASE_URL` (sandbox: `https://api-sandbox.asaas.com/v3`), `ASAAS_WEBHOOK_TOKEN` (o mesmo cadastrado no webhook do Asaas, apontando para `/api/cobranca/webhook`), `ATENA_ADMIN_EMAILS` (e-mails da equipe Atena, separados por vírgula).
 
 ### Pendências / decisões para o Lincoln
-- Dois onboardings: o da Base (`/onboarding`, dentro do app, inclui Marca) e o guiado do site (`/comecar`, inclui treinar IA e WhatsApp). Sugestão: no fim do `/onboarding` da Base, mandar para `/comecar` (ele continua do "Treinar a IA").
+- ~~Dois onboardings~~ — resolvido na junção (F): `/onboarding` termina no `/comecar`, que continua do "Treinar a IA" (`destinoOnboarding`).
 - Confirmar preços, domínio e e-mail de contato (`contato@atenasolution.com.br` é provisório) e o número comercial no `_conteudo.ts`.
 - `/admin` fica dentro do app logado: quem é da equipe Atena precisa ter (ou estar em) uma empresa para passar pelo layout.
-- Leitura das coleções de cobrança pelo navegador é permitida a qualquer membro (regra genérica da Base); escrita é só do servidor.
+- Leitura de cobrança/pagamentos pelo navegador: só dono/gestor (regras geradas na junção); escrita só do servidor.
+
+## F — Junção
+
+**Pronto (01/11/2026)** — as 11 entregas de `docs/modulos/05-juncao.md`. `npm test` (423 testes, todas as abas juntas), `npx tsc --noEmit`, `npm run lint` e `npx next build` limpos.
+
+| Entrega | O que mudou | Onde |
+|---|---|---|
+| 1. Login único | Coach e Estúdio usam `exigirEmpresa`, o Admin SDK (`lib/integracoes/firebase-admin.ts`, agora com `bucketAdmin`) e o banco da Base. No navegador, `cabecalhosLogin()` (`lib/sessao.tsx`) para tudo. Saldo do Estúdio = `empresas/{id}.plano.creditos` (o mesmo da cobrança) | `lib/coach/servidor.ts`, `app/api/estudio/_contexto.ts`, `lib/estudio/repositorio-banco.ts` |
+| 2. Visual único | Coach e Estúdio em cima de `app/ui` (Botão, Cartão, Selo, Vazio, Cabeçalho); fim das cores próprias (`--coach-*`; `--e-*` viram apelidos dos tokens da Base, seguindo o tema claro/escuro do app); `SubNav` comum | `app/ui/SubNav.tsx`, `app/(app)/coach/_componentes/ui.tsx`, `app/(app)/estudio/_componentes/ui.tsx` |
+| 3. Plano e créditos | `decidirAba`/`exigirAba` antes da IA agir (Atendimento, Coach, Estúdio → 402 com motivo); `registrarUsoIA` depois de toda chamada (Claude, transcrição, imagem, vídeo); `<AvisoPlano />` no topo; aba fora do plano mostra convite | `lib/planos/portao.ts`, `app/(app)/plano/ConviteAba.tsx` |
+| 4. Ficha e Início | Ficha: Gravar reunião, Reuniões do Coach, Conversa no WhatsApp. Início: cartões do Atendimento, Coach e Estúdio | `app/(app)/contatos/[id]/FichaContato.tsx`, `app/(app)/inicio/cartoes-das-abas.tsx` |
+| 5. Follow-up | Coach manda pelo WhatsApp da empresa com o envio do Atendimento (`enviarAoContato`): janela de 24h aberta = texto; fechada = modelo de retomada; recusou = wa.me com o motivo | `lib/atendimento/processar.ts`, `app/api/coach/reunioes/[id]/followup` |
+| 6. Áudio do cliente | `Deps.transcrever` ligado ao Gemini (`transcreverAudioCliente`) | `lib/atendimento/servidor.ts`, `lib/integracoes/gemini.ts` |
+| 7. Um onboarding só | `/onboarding` (empresa, horários, serviços, marca) → `/comecar` (treinar IA, WhatsApp). Nada é perguntado duas vezes (`destinoOnboarding`) | `lib/planos/onboarding.ts` |
+| 8. Agenda | Uma regra (`temConflito`) e uma trava por profissional para equipe e IA, também ao remarcar | `lib/agenda/trava.ts`, `lib/dados/trava-firestore.ts` |
+| 9. Regras e índices | Tabela única gera `firestore.rules`, `storage.rules` e `firestore.indexes.json` (`npm run regras`); o teste confere arquivo = tabela e que toda coleção usada no código tem regra | `lib/auth/regras-dados.ts`, `tests/regras-firestore.test.ts` |
+| 10. Status do Estúdio | seção D acima | — |
+| 11. Revisão | Todas as telas no modo simulado (desktop 1366 e celular 390), com dono, atendente, vendedor e outra empresa: sem link interno quebrado, sem rolagem lateral, sem erro no console. Teste de ponta a ponta do Coach no navegador (enviar arquivo → transcrição → análise → follow-up pelo WhatsApp da empresa → reunião na ficha). Corrigidos: tabela de preços rolando de lado no celular, 404 na ficha de contato sem conversa, `/comecar` perguntando de novo o que já estava feito, atendente vendo o Coach com erro (agora some do menu e mostra uma explicação), aviso do lint no player | — |
+
+### Como testar (geral, sem chaves)
+```bash
+npm install
+SIMULAR=1 NEXT_PUBLIC_SIMULAR=1 npm run dev
+```
+Abra `http://localhost:3000/entrar` e entre com um destes e-mails (qualquer senha):
+
+| E-mail | Quem é | O que olhar |
+|---|---|---|
+| `dono@demo.atena` | dono do Studio Aurora (pacote completo pago, 120 créditos) | tudo: Início com os 3 cartões, Atendimento (botão **Simular cliente**), Contatos → ficha da Mariana (conversa, gravar reunião), Agenda, Coach (gravar com microfone ou enviar arquivo → análise simulada → Mandar follow-up), Estúdio (foto/post/vídeo descontam créditos), Plano, Configurações |
+| `ana@demo.atena` | atendente | Atendimento e Agenda; o Coach não aparece no Início e a API recusa |
+| `bruno@demo.atena` | vendedor | Coach só com as próprias reuniões |
+| `outro@demo.atena` | dona de outra empresa (teste grátis) | não vê nada do Studio Aurora |
+| qualquer outro | conta nova | onboarding: `/onboarding` → `/comecar` |
+
+Para ver o bloqueio do plano: em `/plano`, cancele/deixe vencer (ou rode os testes de `tests/juncao/plano.test.ts`). Testes: `npm test` · tipos: `npx tsc --noEmit` · build: `npx next build`.
+
+### Lista única do que precisa de teste ao vivo (no Mac, com as chaves)
+Tudo está marcado `// CONFIRMAR AO VIVO` no código. Em ordem sugerida:
+1. **Firebase**: criar o projeto `atena-solution`; Auth (Google + e-mail/senha) e `verifyIdToken`; Firestore via Admin SDK; `firebase deploy --only firestore:rules,firestore:indexes,storage` e rodar as regras no emulador (`firebase emulators:start`); Storage: `FIREBASE_STORAGE_BUCKET`, CORS do bucket (PUT direto do Coach, baixar PNG do Estúdio), URLs assinadas e token de download.
+2. **Travas no Firestore** com várias funções da Vercel ao mesmo tempo (agenda: equipe × IA; créditos do Estúdio; fila do Atendimento).
+3. **WhatsApp (Meta)**: número de teste, webhook + token de verificação, assinatura, envio de texto/modelo/mídia, digitando, download de mídia (áudio do cliente), erro 131047, versão da Graph API; criar e aprovar os 4 modelos (lembrete, recuperação, avaliação, retomada — a retomada também é usada pelo follow-up do Coach).
+4. **Claude** (`ANTHROPIC_API_KEY`): atendimento com ferramentas (Studio Aurora / Topetes / Mira Luz), análise de reunião de 1 h, legenda do Estúdio, `fallbacks`, campo `usage` registrado no /admin.
+5. **Gemini** (`GEMINI_API_KEY`): transcrição (`responseSchema`, tempos, Files API, janelas de 10 min), áudio OGG do WhatsApp, imagem (`gemini-2.5-flash-image`) e vídeo Veo (nomes dos modelos, formato, baixar o vídeo para o Storage), preços para o custo no /admin.
+6. **Asaas** (sandbox): cliente, assinatura, pagamentos, webhook com `asaas-access-token`, estorno; `collectionGroup('cobranca')` com o índice.
+7. **Vercel**: projeto `atena-solution`, variáveis do `.env.example`, `after()` com a rajada de 8 s, cron a cada 5 min (plano Pro).
+8. **Navegador/celular**: gravação do Coach (áudio da aba no Chrome/Edge, Safari `audio/mp4`, 1 h+), slideshow do Estúdio no iPhone, web push (VAPID; iPhone só com o app na tela inicial).
+9. **Textos legais e comerciais**: termos/privacidade com advogado, preços, domínio e contatos em `app/(site)/_conteudo.ts`; serviço de e-mail para convites da equipe.

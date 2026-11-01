@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NAVEGACAO, itemAtivo, navegacaoDoPlano } from '@/lib/navegacao';
+import { NAVEGACAO, itemAtivo, navegacaoDoPapel, navegacaoDoPlano } from '@/lib/navegacao';
 import { formatarReais, formatarTelefone, iniciais, normalizarBusca, normalizarTelefone, tempoRelativo } from '@/lib/ui/formato';
 
 describe('navegação', () => {
@@ -46,5 +46,15 @@ describe('formatação', () => {
   });
   it('busca sem acento', () => {
     expect(normalizarBusca('  Júlia ÇÃO ')).toBe('julia cao');
+  });
+});
+
+describe('menu por papel (junção)', () => {
+  it('atendente não vê o Coach; vendedor e dono veem', () => {
+    const ids = (p?: 'dono' | 'atendente' | 'vendedor') => navegacaoDoPapel(NAVEGACAO, p).map((i) => i.id);
+    expect(ids('atendente')).not.toContain('coach');
+    expect(ids('vendedor')).toContain('coach');
+    expect(ids('dono')).toContain('coach');
+    expect(ids('atendente')).toContain('atendimento');
   });
 });
