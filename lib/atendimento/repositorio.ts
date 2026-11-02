@@ -41,6 +41,8 @@ export interface RepoAtendimento {
    * Devolve null se alguém ocupou o horário no meio do caminho.
    */
   criarAgendamentoSeLivre(empresaId: string, ag: Omit<Agendamento, 'id'>): Promise<Agendamento | null>
+  /** Remarca só se o novo horário continua livre (mesma trava e regra da Agenda). */
+  remarcarSeLivre(empresaId: string, id: string, patch: Pick<Agendamento, 'inicio' | 'fim' | 'profissionalId'> & Partial<Agendamento>): Promise<boolean>
   atualizarAgendamento(empresaId: string, id: string, patch: Partial<Agendamento>): Promise<void>
 
   contato(empresaId: string, id: string): Promise<Contato | null>

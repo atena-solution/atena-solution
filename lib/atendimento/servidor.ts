@@ -8,6 +8,7 @@ import { RepoBanco, atomicoLocal } from './repo-banco'
 import { cifrar, decifrar } from './cripto'
 import { criarEnviarPush } from './push'
 import { semearAtendimentoDemo } from './demo'
+import { decidirAba, usoDaEmpresa } from '@/lib/planos/portao'
 import type { CanalWhatsApp, Deps } from './processar'
 
 /** Chave fixa SÓ para o modo simulado (nunca usada com dados reais). */
@@ -36,6 +37,17 @@ function canal(): CanalWhatsApp {
 
 const g = globalThis as unknown as { __atenaAtendimentoSemeado?: Promise<void> }
 
+/** Áudio do cliente → texto (Gemini). Baixa a mídia da Meta com o token da empresa e registra o uso. */
+async function transcreverAudio(p: { empresaId: string; midiaId: string; mime?: string; token: string }): Promise<string | null> {
+  const gemini = await import('@/lib/integracoes/gemini')
+  if (gemini.simulando()) return gemini.AUDIO_CLIENTE_SIMULADO
+  const midia = await whatsapp.baixarMidia(p.token, p.midiaId)
+  if (!midia) return null
+  const texto = await gemini.transcreverAudioCliente(new Uint8Array(midia.dados), p.mime || midia.mime)
+  await usoDaEmpresa(p.empresaId)('gemini-transcricao', { segundosAudio: gemini.segundosAproxAudio(midia.dados.byteLength) })
+  return texto
+}
+
 export async function depsAtendimento(): Promise<Deps> {
   const b = await banco()
   let atomico = atomicoLocal(b)
@@ -55,6 +67,9 @@ export async function depsAtendimento(): Promise<Deps> {
     decifrar: decifrarToken,
     agora: () => new Date(),
     enviarPush: criarEnviarPush(repo),
+    transcrever: (p) => transcreverAudio(p),
+    acessoAba: (empresaId) => decidirAba(empresaId, 'atendimento', 'escrever'),
+    registrarUso: (empresaId, modelo, uso) => usoDaEmpresa(empresaId)(modelo, uso),
   }
 }
 

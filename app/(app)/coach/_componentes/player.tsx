@@ -54,7 +54,9 @@ export const Player = forwardRef<ControlePlayer, { audios: AudioPedaco[]; duraca
 
     useImperativeHandle(ref, () => ({ irPara: (seg, tocar = true) => { setTocando(tocar || tocando); posicionar(seg, tocar || tocando); } }), [posicionar, tocando]);
 
-    useEffect(() => { posicionar(0, false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [audios]);
+    // volta pro começo só quando trocam os áudios (posicionar muda a cada render da velocidade)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { posicionar(0, false); }, [audios]);
     useEffect(() => { for (const tr of trilhas) { const el = els.current[tr]; if (el) el.playbackRate = velocidade; } }, [velocidade, trilhas]);
 
     function aoAtualizar() {
@@ -89,7 +91,7 @@ export const Player = forwardRef<ControlePlayer, { audios: AudioPedaco[]; duraca
       else for (const tr of trilhas) els.current[tr]?.pause();
     }
 
-    if (audios.length === 0) return <p className="text-sm text-[var(--coach-suave)]">Sem áudio salvo pra esta reunião.</p>;
+    if (audios.length === 0) return <p className="text-sm text-texto-2">Sem áudio salvo pra esta reunião.</p>;
     const pct = duracaoSeg ? (t / duracaoSeg) * 100 : 0;
 
     return (
@@ -98,27 +100,27 @@ export const Player = forwardRef<ControlePlayer, { audios: AudioPedaco[]; duraca
           <audio key={tr} ref={(el) => { els.current[tr] = el; }} preload="metadata" onTimeUpdate={tr === mestre ? aoAtualizar : undefined} onEnded={tr === mestre ? aoAcabar : undefined} />
         ))}
         <div className="flex items-center gap-3">
-          <button onClick={alternar} aria-label={tocando ? 'Pausar' : 'Tocar'} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white [background:var(--coach-grad)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coach-acento)]">
+          <button onClick={alternar} aria-label={tocando ? 'Pausar' : 'Tocar'} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white gradiente-atena focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coach">
             {tocando ? '❚❚' : '▶'}
           </button>
           <div className="relative flex-1">
             <input
               type="range" min={0} max={Math.max(1, duracaoSeg)} step={0.5} value={t} aria-label="Posição"
               onChange={(e) => posicionar(Number(e.target.value), tocando)}
-              className="w-full accent-[var(--coach-acento)]"
-              style={{ background: `linear-gradient(to right, var(--coach-acento) ${pct}%, transparent ${pct}%)` }}
+              className="w-full accent-coach"
+              style={{ background: `linear-gradient(to right, var(--aba-coach) ${pct}%, transparent ${pct}%)` }}
             />
             {marcadores.map((m, i) => (
               <button
                 key={i} title={`${formatarTempo(m.seg)} · ${m.rotulo}`} aria-label={`Objeção em ${formatarTempo(m.seg)}: ${m.rotulo}`}
                 onClick={() => posicionar(m.seg, true)}
-                className="absolute -top-2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-[var(--coach-atencao)] ring-2 ring-[var(--coach-cartao)]"
+                className="absolute -top-2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-atencao ring-2 ring-superficie"
                 style={{ left: `${(m.seg / Math.max(1, duracaoSeg)) * 100}%` }}
               />
             ))}
           </div>
-          <span className="num w-24 shrink-0 text-right text-xs text-[var(--coach-suave)]">{formatarTempo(t)} / {formatarTempo(duracaoSeg)}</span>
-          <button onClick={() => setVelocidade((v) => (v >= 2 ? 1 : v + 0.5))} className="num rounded-md border border-[var(--coach-borda)] px-2 py-1 text-xs" aria-label="Velocidade">{velocidade}×</button>
+          <span className="numero w-24 shrink-0 text-right text-xs text-texto-2">{formatarTempo(t)} / {formatarTempo(duracaoSeg)}</span>
+          <button onClick={() => setVelocidade((v) => (v >= 2 ? 1 : v + 0.5))} className="numero rounded-md border border-borda px-2 py-1 text-xs" aria-label="Velocidade">{velocidade}×</button>
         </div>
       </div>
     );

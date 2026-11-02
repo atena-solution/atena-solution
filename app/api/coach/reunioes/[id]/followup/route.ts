@@ -1,7 +1,10 @@
-// POST { texto? }: manda o follow-up. Com Atendimento ativo e WhatsApp conectado, envia pelo número da empresa;
-// senão devolve o link wa.me pra tela abrir.
+// POST { texto? }: manda o follow-up. Com Atendimento no plano e WhatsApp conectado, envia pelo número da empresa
+// (pelo envio do Atendimento, que respeita a janela de 24h); se não der, devolve o link wa.me pra tela abrir.
 import { autenticar, dadosEmpresa, repositorio, responder } from '@/lib/coach/servidor';
 import { prepararFollowup } from '@/lib/coach/servico';
+import { linkWaMe } from '@/lib/coach/contatos';
+import { depsAtendimento } from '@/lib/atendimento/servidor';
+import { enviarAoContato } from '@/lib/atendimento/processar';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   return responder(async () => {
@@ -9,11 +12,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const s = await autenticar(req);
     const corpo = (await req.json().catch(() => ({}))) as { texto?: string };
     const emp = await dadosEmpresa(s.empresaId);
-    const f = await prepararFollowup(s, await repositorio(), id, { abas: emp.abas, whatsappConectado: emp.whatsappConectado, texto: corpo.texto });
-    if (f.canal === 'whatsapp-empresa') {
-      // JUNÇÃO (sessão B): chamar o envio do Atendimento, ex.: enviarTextoAoContato(s.empresaId, f.contatoId, f.texto).
-      // Fora da janela de 24 h a Meta exige modelo aprovado — o módulo de B decide; se recusar, cair no wa.me.
-      return { canal: f.canal, enviado: false, pendente: 'Envio pelo WhatsApp da empresa liga na junção com o Atendimento.', texto: f.texto };
+    const repo = await repositorio();
+    const f = await prepararFollowup(s, repo, id, { abas: emp.abas, whatsappConectado: emp.whatsappConectado, texto: corpo.texto });
+    if (f.canal === 'whatsapp-empresa' && f.contatoId) {
+      const r = await enviarAoContato(s.empresaId, f.contatoId, s.uid, f.texto, await depsAtendimento());
+      if (r.ok) return { canal: f.canal, enviado: true, texto: f.texto, conversaId: r.conversaId };
+      // não deu (janela fechada sem modelo, número recusou…): cai no wa.me com o motivo
+      const reuniao = await repo.obterReuniao(s.empresaId, id);
+      const link = linkWaMe(reuniao?.contatoTelefone, f.texto) ?? `https://wa.me/?text=${encodeURIComponent(f.texto)}`;
+      return { canal: 'wa.me', enviado: false, motivo: r.erro, link, texto: f.texto };
     }
     return { canal: f.canal, link: f.link, texto: f.texto };
   });

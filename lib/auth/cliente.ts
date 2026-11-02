@@ -87,6 +87,7 @@ function uidSimulado(email: string): string {
   const conhecidos: Record<string, string> = {
     'dono@demo.atena': 'demo-dono',
     'ana@demo.atena': 'demo-ana',
+    'bruno@demo.atena': 'demo-bruno',
     'outro@demo.atena': 'demo-outro',
   };
   if (conhecidos[email]) return conhecidos[email];

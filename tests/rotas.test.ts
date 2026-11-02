@@ -101,7 +101,7 @@ describe('papéis', () => {
     await empresa.PATCH(req(DONO, 'PATCH', { nome: 'Novo nome', plano: { abas: [], creditos: 99999 } }));
     const e = (await (await empresa.GET(req(DONO))).json()).empresa;
     expect(e.nome).toBe('Novo nome');
-    expect(e.plano.creditos).toBe(20);
+    expect(e.plano.creditos).toBe(120);
   });
 });
 

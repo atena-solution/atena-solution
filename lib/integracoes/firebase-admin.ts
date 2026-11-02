@@ -2,6 +2,7 @@ import 'server-only';
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 /**
  * Firebase Admin do projeto NOVO `atena-solution`.
@@ -23,4 +24,9 @@ export function firestoreAdmin() {
 
 export function authAdmin() {
   return getAuth(app());
+}
+
+/** Bucket do Storage (env FIREBASE_STORAGE_BUCKET, ex.: atena-solution.firebasestorage.app). // CONFIRMAR AO VIVO */
+export function bucketAdmin() {
+  return getStorage(app()).bucket(process.env.FIREBASE_STORAGE_BUCKET);
 }

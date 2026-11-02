@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acaoNaConversa, enviarDaEquipe, processarItem, receberWebhook, rodarAutomacoes, rodarAvisos } from '@/lib/atendimento/processar'
+import { acaoNaConversa, enviarAoContato, enviarDaEquipe, processarItem, receberWebhook, rodarAutomacoes, rodarAvisos } from '@/lib/atendimento/processar'
 import { iaRoteirizada, iaSimulada, texto, usarFerramenta } from '@/lib/integracoes/claude'
 import { webhookDeTexto } from '@/lib/integracoes/whatsapp'
 import { ambiente, textos } from './ambiente'
@@ -243,5 +243,70 @@ describe('IA simulada (SIMULAR=1)', () => {
     expect(await falar('pode ser amanhã às 10:00 o corte')).toContain('Prontinho')
     const contato = (await amb.repo.contatoPorTelefone('e1', tel))!
     expect(await amb.repo.agendamentosDoContato('e1', contato.id)).toHaveLength(1)
+  })
+})
+
+describe('plano e uso de IA (junção)', () => {
+  it('fora do plano a IA não responde (nem chama a Claude)', async () => {
+    const ia = iaRoteirizada([texto('Oi!')])
+    const amb = await ambiente(ia)
+    amb.deps.acessoAba = async (e) => ({ permitido: e !== 'e1', mensagem: 'Seu plano venceu.' })
+    const [i] = (await receberWebhook(msg('PN1', 'oi'), amb.deps)).itens
+    amb.avancar(9000)
+    expect(await processarItem(i.itemId, i.empresaId, amb.deps)).toMatchObject({ acao: 'ignorado', motivo: 'Seu plano venceu.' })
+    expect(ia.pedidos).toHaveLength(0)
+    expect(amb.enviadas).toHaveLength(0)
+  })
+  it('registra os tokens de cada chamada na empresa certa', async () => {
+    const ia = iaRoteirizada([{ ...texto('Oi!'), modelo: 'claude-sonnet-5-5', uso: { entrada: 1200, saida: 40 } }])
+    const amb = await ambiente(ia)
+    const usos: unknown[] = []
+    amb.deps.registrarUso = async (e, m, u) => void usos.push([e, m, u])
+    const [i] = (await receberWebhook(msg('PN2', 'oi'), amb.deps)).itens
+    amb.avancar(9000)
+    expect((await processarItem(i.itemId, i.empresaId, amb.deps)).acao).toBe('respondeu')
+    expect(usos).toEqual([['e2', 'claude-sonnet-5-5', { entrada: 1200, saida: 40 }]])
+  })
+})
+
+describe('envio para um contato (follow-up do Coach)', () => {
+  it('sem conversa e sem janela aberta usa o modelo de retomada e abre a conversa com a equipe', async () => {
+    const amb = await ambiente(iaRoteirizada([]))
+    await amb.banco.gravar('empresas/e1/contatos/ct-carla', { id: 'ct-carla', empresaId: 'e1', nome: 'Carla', telefone: '5511977776666', origem: 'Coach', etapa: 'novo', etiquetas: [], ultimaInteracaoEm: '', criadoEm: '', campos: {} })
+    const c = { id: 'ct-carla' }
+    const r = await enviarAoContato('e1', c.id, 'dono-e1', 'Oi Carla, segue a proposta.', amb.deps)
+    expect(r.ok).toBe(true)
+    expect(amb.enviadas).toHaveLength(1)
+    expect(amb.enviadas[0]).toMatchObject({ phoneNumberId: 'PN1', para: '5511977776666', conteudo: { tipo: 'modelo', nome: 'retomada' } })
+    const conv = await amb.repo.conversaDoContato('e1', c.id)
+    expect(conv).toMatchObject({ modo: 'humano', houveHumano: true })
+  })
+  it('com a janela aberta manda texto livre; contato de outra empresa não é achado', async () => {
+    const amb = await ambiente(iaRoteirizada([texto('Oi!')]))
+    await receberWebhook(msg('PN1', 'oi'), amb.deps)
+    const c = await amb.repo.contatoPorTelefone('e1', tel)
+    const r = await enviarAoContato('e1', c!.id, 'dono-e1', 'Proposta enviada!', amb.deps)
+    expect(r.ok).toBe(true)
+    expect(amb.enviadas.at(-1)!.conteudo).toEqual({ tipo: 'texto', texto: 'Proposta enviada!' })
+    expect(await enviarAoContato('e2', c!.id, 'dono-e2', 'x', amb.deps)).toEqual({ ok: false, erro: 'Contato não encontrado.' })
+  })
+})
+
+describe('áudio do cliente (junção com o Gemini)', () => {
+  it('o áudio vira texto e a IA responde ao que foi falado', async () => {
+    const ia = iaRoteirizada([texto('Tem sim! Às 15h serve?')])
+    const amb = await ambiente(ia)
+    const pedidos: unknown[] = []
+    amb.deps.transcrever = async (p) => (pedidos.push(p), 'tem horário amanhã à tarde?')
+    const corpo = webhookDeTexto({ phoneNumberId: 'PN1', de: tel, texto: '' }) as { entry: { changes: { value: { messages: Record<string, unknown>[] } }[] }[] }
+    const m = corpo.entry[0].changes[0].value.messages[0]
+    delete m.text
+    m.type = 'audio'
+    m.audio = { id: 'MIDIA1', mime_type: 'audio/ogg; codecs=opus' }
+    const [i] = (await receberWebhook(corpo, amb.deps)).itens
+    expect(pedidos).toEqual([{ empresaId: 'e1', midiaId: 'MIDIA1', mime: 'audio/ogg; codecs=opus', token: 'TOKEN-e1' }])
+    amb.avancar(9000)
+    expect((await processarItem(i.itemId, i.empresaId, amb.deps)).acao).toBe('respondeu')
+    expect(JSON.stringify(ia.pedidos[0].mensagens)).toContain('tem horário amanhã à tarde?')
   })
 })

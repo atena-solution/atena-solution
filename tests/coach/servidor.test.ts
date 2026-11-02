@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { caminhoDaEmpresa, armazenamentoEmMemoria } from '../../lib/coach/armazenamento';
+import { caminhoDaEmpresa, armazenamentoEmMemoria, urlSimulada, conferirUrlSimulada } from '../../lib/coach/armazenamento';
 import { autenticar, responder } from '../../lib/coach/servidor';
 import { ErroCoach } from '../../lib/coach/servico';
+import { BancoMemoria } from '../../lib/dados/banco';
+import { semearDemo } from '../../lib/dados/demo';
 
 beforeEach(() => { process.env.SIMULAR = '1'; });
 
@@ -22,15 +24,37 @@ describe('armazenamento', () => {
   });
 });
 
-describe('servidor', () => {
-  it('sessão simulada aceita papel válido e ignora inválido', async () => {
-    const s = await autenticar(new Request('http://x', { headers: { 'x-sim-papel': 'vendedor', 'x-sim-empresa': 'e9' } }));
-    expect(s).toMatchObject({ papel: 'vendedor', empresaId: 'e9' });
-    expect((await autenticar(new Request('http://x', { headers: { 'x-sim-papel': 'admin' } }))).papel).toBe('dono');
+describe('URL assinada do modo simulado', () => {
+  const sp = (u: string) => new URL(u, 'http://x').searchParams;
+  it('vale só pro caminho, ação e prazo assinados', () => {
+    const u = urlSimulada('empresas/e1/reunioes/r/a.webm', 'ler', 1000, 'k');
+    expect(conferirUrlSimulada(sp(u), 'ler', 2000, 'k')).toBe('empresas/e1/reunioes/r/a.webm');
+    expect(conferirUrlSimulada(sp(u), 'enviar', 2000, 'k')).toBeNull();
+    expect(conferirUrlSimulada(sp(u), 'ler', 1000 + 3 * 3600 * 1000, 'k')).toBeNull();
+    expect(conferirUrlSimulada(sp(u.replace('e1', 'e2')), 'ler', 2000, 'k')).toBeNull();
+    expect(conferirUrlSimulada(sp(u), 'ler', 2000, 'outro')).toBeNull();
   });
-  it('sem SIMULAR exige login da Base', async () => {
-    process.env.SIMULAR = '0';
-    await expect(autenticar(new Request('http://x'))).rejects.toMatchObject({ status: 501 });
+});
+
+describe('servidor', () => {
+  const ctx = async () => {
+    const b = new BancoMemoria();
+    await semearDemo(b);
+    return { banco: b, simulado: true };
+  };
+  const req = (token?: string) => new Request('http://x', { headers: token ? { authorization: `Bearer ${token}` } : {} });
+  it('usa o login da Base: papel e nome vêm do membro da empresa', async () => {
+    const c = await ctx();
+    expect(await autenticar(req('simulado:demo-bruno:bruno@demo.atena'), c)).toMatchObject({ uid: 'demo-bruno', empresaId: 'demo', papel: 'vendedor', nome: 'Bruno Lima' });
+    expect(await autenticar(req('simulado:demo-dono:dono@demo.atena'), c)).toMatchObject({ papel: 'dono', empresaId: 'demo' });
+    expect(await autenticar(req('simulado:demo-outro:outro@demo.atena'), c)).toMatchObject({ empresaId: 'demo-outra' });
+  });
+  it('sem login → 401; atendente não usa o Coach → 403; não entra em empresa alheia', async () => {
+    const c = await ctx();
+    await expect(autenticar(req(), c)).rejects.toMatchObject({ status: 401 });
+    await expect(autenticar(req('simulado:demo-ana:ana@demo.atena'), c)).rejects.toMatchObject({ status: 403 });
+    const alheia = new Request('http://x', { headers: { authorization: 'Bearer simulado:demo-outro:outro@demo.atena', 'x-empresa-id': 'demo' } });
+    await expect(autenticar(alheia, c)).rejects.toMatchObject({ status: 403 });
   });
   it('responder converte erros', async () => {
     const r = await responder(async () => { throw new ErroCoach(404, 'Reunião não encontrada.'); });

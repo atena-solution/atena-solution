@@ -5,7 +5,7 @@ import type { Contato, Treino } from './tipos'
 import { responder, FRASE_HUMANO } from './cerebro'
 import { detectarAssuntoSensivel } from './regras'
 import { validarTreino } from './treino'
-import type { BetaMessageParam } from '@/lib/integracoes/claude'
+import { medirIA, type BetaMessageParam } from '@/lib/integracoes/claude'
 
 export interface FalaSimulador {
   de: 'cliente' | 'ia'
@@ -65,7 +65,7 @@ export async function simularConversa(p: { empresaId: string; falas: FalaSimulad
     campos: {},
   }
   const r = await responder({
-    ia: p.deps.ia,
+    ia: p.deps.registrarUso ? medirIA(p.deps.ia, (m, u) => p.deps.registrarUso!(p.empresaId, m, u)) : p.deps.ia,
     treino,
     mensagens: falasParaMensagens(p.falas),
     ctx: { repo, empresa, servicos, profissionais, contato, conversa: null, agora, seco: true },

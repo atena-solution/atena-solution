@@ -1,37 +1,28 @@
 'use client';
-// Peças visuais do Estúdio. Na junção, trocar pelos componentes de app/ui quando equivalentes.
+// Peças visuais do Estúdio — em cima do design system da Base (app/ui): mesmos botões, cartões, selos e cabeçalho.
 import Link from 'next/link';
 import { type ButtonHTMLAttributes, type ReactNode, useId } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Botao as BotaoBase, Cabecalho, Selo as SeloBase, Vazio as VazioBase, cx } from '@/app/ui';
 
-export function cx(...c: (string | false | null | undefined)[]) {
-  return c.filter(Boolean).join(' ');
-}
+export { cx } from '@/app/ui';
 
 type Variante = 'principal' | 'secundario' | 'fantasma' | 'perigo';
-const VAR: Record<Variante, string> = {
-  principal: 'text-white bg-[linear-gradient(135deg,var(--e-primaria-1),var(--e-primaria-2))] hover:brightness-110 shadow-[0_1px_0_rgba(255,255,255,.15)_inset]',
-  secundario: 'bg-[var(--e-cartao)] border border-[var(--e-borda)] hover:bg-[var(--e-cartao-2)]',
-  fantasma: 'hover:bg-[var(--e-cartao-2)] text-[var(--e-suave)] hover:text-[var(--e-texto)]',
-  perigo: 'text-[var(--e-erro)] border border-[var(--e-borda)] hover:bg-[rgba(229,72,77,.08)]',
+const VARIANTE = { principal: 'primario', secundario: 'secundario', fantasma: 'fantasma', perigo: 'perigo' } as const;
+// mesmas classes do Botao da Base, para o LinkBotao ficar idêntico ao botão
+const CLASSE_LINK: Record<Variante, string> = {
+  principal: 'gradiente-atena text-white shadow-[0_1px_0_rgb(255_255_255/0.15)_inset] hover:brightness-110',
+  secundario: 'bg-superficie text-texto border border-borda hover:border-borda-forte hover:bg-superficie-2',
+  fantasma: 'text-texto-2 hover:text-texto hover:bg-superficie-2',
+  perigo: 'bg-erro text-white hover:brightness-110',
 };
 
-export function Botao({ variante = 'principal', carregando, icone, children, className, ...p }: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: Variante; carregando?: boolean; icone?: ReactNode }) {
-  return (
-    <button
-      {...p}
-      disabled={p.disabled || carregando}
-      className={cx('inline-flex items-center justify-center gap-2 rounded-[10px] px-4 h-10 text-sm font-medium transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed', VAR[variante], className)}
-    >
-      {carregando ? <Loader2 className="size-4 animate-spin" aria-hidden /> : icone}
-      {children}
-    </button>
-  );
+export function Botao({ variante = 'principal', ...p }: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: Variante; carregando?: boolean; icone?: ReactNode }) {
+  return <BotaoBase variante={VARIANTE[variante]} {...p} />;
 }
 
 export function LinkBotao({ href, variante = 'secundario', children, className, icone }: { href: string; variante?: Variante; children: ReactNode; className?: string; icone?: ReactNode }) {
   return (
-    <Link href={href} className={cx('inline-flex items-center justify-center gap-2 rounded-[10px] px-4 h-10 text-sm font-medium transition duration-150', VAR[variante], className)}>
+    <Link href={href} className={cx('inline-flex h-10 items-center justify-center gap-2 rounded-[10px] px-4 text-sm font-medium whitespace-nowrap transition-all duration-150', CLASSE_LINK[variante], className)}>
       {icone}
       {children}
     </Link>
@@ -39,19 +30,12 @@ export function LinkBotao({ href, variante = 'secundario', children, className, 
 }
 
 export function Cartao({ children, className, as: Tag = 'section' }: { children: ReactNode; className?: string; as?: 'section' | 'div' | 'article' }) {
-  return <Tag className={cx('rounded-[14px] border border-[var(--e-borda)] bg-[var(--e-cartao)]', className)}>{children}</Tag>;
+  return <Tag className={cx('min-w-0 rounded-cartao border border-borda bg-superficie shadow-[var(--sombra)]', className)}>{children}</Tag>;
 }
 
+/** Cabeçalho de página: o mesmo da Base (app/ui Cabecalho). */
 export function Titulo({ titulo, descricao, acao }: { titulo: string; descricao?: string; acao?: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
-      <div>
-        <h1 className="text-2xl sm:text-[28px] leading-tight"><span className="e-serif">{titulo}</span></h1>
-        {descricao && <p className="text-sm text-[var(--e-suave)] mt-1 max-w-xl">{descricao}</p>}
-      </div>
-      {acao}
-    </div>
-  );
+  return <Cabecalho titulo={titulo} descricao={descricao} acoes={acao} />;
 }
 
 export function Rotulo({ children, dica }: { children: ReactNode; dica?: string }) {
@@ -103,25 +87,18 @@ export function Opcoes<T extends string>({ rotulo, dica, opcoes, valor, aoMudar,
   );
 }
 
-export function Selo({ children, tom = 'neutro' }: { children: ReactNode; tom?: 'neutro' | 'acento' | 'ok' | 'erro' }) {
-  const t = { neutro: 'bg-[var(--e-cartao-2)] text-[var(--e-suave)]', acento: 'bg-[var(--e-acento-fraco)] text-[#B07818] dark:text-[var(--e-acento)]', ok: 'bg-[rgba(47,179,124,.14)] text-[#1F8A5E]', erro: 'bg-[rgba(229,72,77,.12)] text-[var(--e-erro)]' }[tom];
-  return <span className={cx('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium', t)}>{children}</span>;
+const TOM = { neutro: 'neutro', acento: 'estudio', ok: 'sucesso', erro: 'erro' } as const;
+export function Selo({ children, tom = 'neutro' }: { children: ReactNode; tom?: keyof typeof TOM }) {
+  return <SeloBase tom={TOM[tom]}>{children}</SeloBase>;
 }
 
 export function Vazio({ icone, titulo, texto, acao }: { icone: ReactNode; titulo: string; texto: string; acao?: ReactNode }) {
-  return (
-    <div className="flex flex-col items-center text-center py-14 px-6">
-      <div className="size-12 rounded-full grid place-items-center bg-[var(--e-acento-fraco)] text-[var(--e-acento)] mb-4">{icone}</div>
-      <h3 className="font-medium">{titulo}</h3>
-      <p className="text-sm text-[var(--e-suave)] mt-1 max-w-sm">{texto}</p>
-      {acao && <div className="mt-5">{acao}</div>}
-    </div>
-  );
+  return <VazioBase icone={icone} titulo={titulo} descricao={texto} acao={acao} />;
 }
 
 export function Aviso({ tom = 'erro', children }: { tom?: 'erro' | 'ok' | 'info'; children: ReactNode }) {
-  const t = { erro: 'border-[rgba(229,72,77,.35)] bg-[rgba(229,72,77,.06)]', ok: 'border-[rgba(47,179,124,.35)] bg-[rgba(47,179,124,.06)]', info: 'border-[var(--e-borda)] bg-[var(--e-cartao-2)]' }[tom];
-  return <div role={tom === 'erro' ? 'alert' : 'status'} className={cx('rounded-[12px] border px-4 py-3 text-sm', t)}>{children}</div>;
+  const t = { erro: 'border-erro/30 bg-erro/8', ok: 'border-sucesso/30 bg-sucesso/8', info: 'border-borda bg-superficie-2' }[tom];
+  return <div role={tom === 'erro' ? 'alert' : 'status'} className={cx('rounded-[10px] border px-4 py-3 text-sm text-texto', t)}>{children}</div>;
 }
 
 export function Custo({ creditos, saldo }: { creditos: number; saldo?: number | null }) {

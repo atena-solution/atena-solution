@@ -22,12 +22,14 @@ export interface EntradaAnalise {
   vendedorNome?: string;
   contatoNome?: string;
   agoraISO?: string;
+  /** Avisa os tokens gastos (registrarUsoIA). */
+  aoUsar?: (modelo: string, uso: { entrada: number; saida: number; cacheLeitura?: number }) => unknown;
 }
 
 /** Função que recebe (system, prompt) e devolve o texto da IA. Injetável nos testes. */
 export type ChamadaIA = (system: string, prompt: string) => Promise<string>;
 
-async function chamarClaude(system: string, prompt: string): Promise<string> {
+async function chamarClaude(system: string, prompt: string, aoUsar?: EntradaAnalise['aoUsar']): Promise<string> {
   // import dinâmico: o pacote só é exigido quando há chave (testes e SIMULAR=1 não precisam dele)
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
   const client = new Anthropic();
@@ -39,6 +41,11 @@ async function chamarClaude(system: string, prompt: string): Promise<string> {
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
   });
+  try {
+    await aoUsar?.(resp.model || MODELO_ANALISE, { entrada: resp.usage.input_tokens ?? 0, saida: resp.usage.output_tokens ?? 0, cacheLeitura: resp.usage.cache_read_input_tokens ?? 0 });
+  } catch {
+    /* registro de uso não derruba a análise */
+  }
   if (resp.stop_reason === 'refusal') throw new Error('A IA recusou analisar esta reunião.');
   return resp.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
 }
@@ -51,6 +58,6 @@ export async function analisarComIA(e: EntradaAnalise, chamada?: ChamadaIA): Pro
     roteiro: e.roteiro, falas: e.falas, empresaNome: e.empresaNome, vendedorNome: e.vendedorNome,
     contatoNome: e.contatoNome, hojeISO: agoraISO.slice(0, 10),
   });
-  const texto = await (chamada ?? chamarClaude)(SISTEMA_ANALISE, prompt);
+  const texto = chamada ? await chamada(SISTEMA_ANALISE, prompt) : await chamarClaude(SISTEMA_ANALISE, prompt, e.aoUsar);
   return normalizarAnalise(texto, ctx);
 }

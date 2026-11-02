@@ -54,10 +54,10 @@ export default function PaginaReuniao({ params }: { params: Promise<{ id: string
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <Link href="/coach" className="text-xs text-[var(--coach-suave)] hover:underline">← Coach</Link>
-          <h1 className="titulo-serif mt-1 text-4xl">{r.titulo}</h1>
-          <p className="mt-1 text-sm text-[var(--coach-suave)]">
-            {r.vendedorNome}{r.contatoNome ? ` com ${r.contatoNome}` : ''} · {dataHora(r.criadoEm)} · <span className="num">{formatarTempo(r.duracaoSeg)}</span>
+          <Link href="/coach" className="text-xs text-texto-2 hover:underline">← Coach</Link>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-texto">{r.titulo}</h1>
+          <p className="mt-1 text-sm text-texto-2">
+            {r.vendedorNome}{r.contatoNome ? ` com ${r.contatoNome}` : ''} · {dataHora(r.criadoEm)} · <span className="numero">{formatarTempo(r.duracaoSeg)}</span>
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {a ? <Selo tom={RESULTADO[a.resultado].tom}>{RESULTADO[a.resultado].texto}</Selo> : <Selo>{STATUS[r.status]}</Selo>}
@@ -67,8 +67,8 @@ export default function PaginaReuniao({ params }: { params: Promise<{ id: string
         </div>
         {a && (
           <div className="text-right">
-            <p className="text-xs text-[var(--coach-suave)]">Nota do vendedor</p>
-            <p className="num text-6xl leading-none" style={{ color: corNota(a.nota) }}>{nota(a.nota)}</p>
+            <p className="text-xs text-texto-2">Nota do vendedor</p>
+            <p className="numero text-6xl leading-none" style={{ color: corNota(a.nota) }}>{nota(a.nota)}</p>
           </div>
         )}
       </header>
@@ -90,20 +90,20 @@ export default function PaginaReuniao({ params }: { params: Promise<{ id: string
           <Cartao>
             <Player ref={player} audios={d.audios} duracaoSeg={r.duracaoSeg} marcadores={marcadores} aoTempo={aoTempo} />
           </Cartao>
-          <Cartao titulo="Transcrição" acao={<span className="text-xs text-[var(--coach-suave)]">Clique numa fala pra ouvir</span>}>
+          <Cartao titulo="Transcrição" acao={<span className="text-xs text-texto-2">Clique numa fala pra ouvir</span>}>
             {falas.length === 0 ? (
-              <p className="text-sm text-[var(--coach-suave)]">Ainda sem fala transcrita.</p>
+              <p className="text-sm text-texto-2">Ainda sem fala transcrita.</p>
             ) : (
               <ol ref={lista} className="flex max-h-[60vh] flex-col gap-1 overflow-y-auto pr-1" onMouseEnter={() => (seguir.current = false)} onMouseLeave={() => (seguir.current = true)}>
                 {falas.map((f, i) => (
                   <li key={i} data-i={i}>
                     <button
                       onClick={() => player.current?.irPara(f.inicioSeg)}
-                      className={`flex w-full gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors duration-150 ${i === atual ? 'bg-[var(--coach-acento-suave)]' : 'hover:bg-[var(--coach-acento-suave)]/50'} ${f.quem === 'cliente' ? 'pl-6' : ''}`}
+                      className={`flex w-full gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors duration-150 ${i === atual ? 'bg-coach/10' : 'hover:bg-coach/5'} ${f.quem === 'cliente' ? 'pl-6' : ''}`}
                     >
-                      <span className="num w-12 shrink-0 pt-0.5 text-xs text-[var(--coach-suave)]">{formatarTempo(f.inicioSeg)}</span>
+                      <span className="numero w-12 shrink-0 pt-0.5 text-xs text-texto-2">{formatarTempo(f.inicioSeg)}</span>
                       <span>
-                        <span className={`mr-1.5 text-xs font-medium ${f.quem === 'vendedor' ? 'text-[var(--coach-acento)]' : 'text-[var(--coach-ok)]'}`}>
+                        <span className={`mr-1.5 text-xs font-medium ${f.quem === 'vendedor' ? 'text-coach' : 'text-sucesso'}`}>
                           {f.quem === 'vendedor' ? 'Vendedor' : f.quem === 'cliente' ? 'Cliente' : '—'}
                         </span>
                         {f.texto}
@@ -121,13 +121,13 @@ export default function PaginaReuniao({ params }: { params: Promise<{ id: string
             <>
               <Cartao titulo="Resumo"><p className="text-sm leading-relaxed">{a.resumo}</p></Cartao>
               <div className="grid grid-cols-2 gap-4">
-                <Cartao titulo="Chance de fechar"><p className="num text-3xl">{a.chanceFechar}%</p></Cartao>
+                <Cartao titulo="Chance de fechar"><p className="numero text-3xl">{a.chanceFechar}%</p></Cartao>
                 <Cartao titulo="Quem falou">
-                  <div className="flex h-2 overflow-hidden rounded-full bg-[var(--coach-borda)]" aria-label={`Vendedor ${a.fala.vendedorPct}%, cliente ${a.fala.clientePct}%`}>
-                    <div className="bg-[var(--coach-acento)]" style={{ width: `${a.fala.vendedorPct}%` }} />
-                    <div className="bg-[var(--coach-ok)]" style={{ width: `${a.fala.clientePct}%` }} />
+                  <div className="flex h-2 overflow-hidden rounded-full bg-superficie-2" aria-label={`Vendedor ${a.fala.vendedorPct}%, cliente ${a.fala.clientePct}%`}>
+                    <div className="bg-coach" style={{ width: `${a.fala.vendedorPct}%` }} />
+                    <div className="bg-sucesso" style={{ width: `${a.fala.clientePct}%` }} />
                   </div>
-                  <p className="mt-2 flex flex-wrap justify-between gap-x-3 text-xs"><span className="num">Vendedor {a.fala.vendedorPct}%</span><span className="num">Cliente {a.fala.clientePct}%</span></p>
+                  <p className="mt-2 flex flex-wrap justify-between gap-x-3 text-xs"><span className="numero">Vendedor {a.fala.vendedorPct}%</span><span className="numero">Cliente {a.fala.clientePct}%</span></p>
                 </Cartao>
               </div>
               <Cartao titulo="Etapas do roteiro">
@@ -135,7 +135,7 @@ export default function PaginaReuniao({ params }: { params: Promise<{ id: string
                   {a.etapas.map((e) => (
                     <li key={e.etapaId} className="text-sm">
                       <div className="flex items-center justify-between gap-2"><span className="font-medium">{e.nome}</span><Selo tom={ETAPA[e.status].tom}>{ETAPA[e.status].texto}</Selo></div>
-                      {e.comentario && e.comentario !== '(simulado)' && <p className="mt-0.5 text-xs text-[var(--coach-suave)]">{e.comentario}</p>}
+                      {e.comentario && e.comentario !== '(simulado)' && <p className="mt-0.5 text-xs text-texto-2">{e.comentario}</p>}
                     </li>
                   ))}
                 </ul>
@@ -144,12 +144,12 @@ export default function PaginaReuniao({ params }: { params: Promise<{ id: string
               {(a.proximoPasso.acao || a.proximoPasso.data) && (
                 <Cartao titulo="Próximo passo">
                   <p className="text-sm">{a.proximoPasso.acao}</p>
-                  {a.proximoPasso.data && <p className="num mt-1 text-xs text-[var(--coach-suave)]">{new Date(`${a.proximoPasso.data}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</p>}
+                  {a.proximoPasso.data && <p className="numero mt-1 text-xs text-texto-2">{new Date(`${a.proximoPasso.data}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</p>}
                 </Cartao>
               )}
             </>
           ) : (
-            <Cartao><p className="text-sm text-[var(--coach-suave)]">A análise aparece aqui quando a reunião for analisada.</p></Cartao>
+            <Cartao><p className="text-sm text-texto-2">A análise aparece aqui quando a reunião for analisada.</p></Cartao>
           )}
         </div>
       </div>
@@ -157,18 +157,18 @@ export default function PaginaReuniao({ params }: { params: Promise<{ id: string
       {a && (
         <div className="grid gap-4 md:grid-cols-2">
           <Cartao titulo="Objeções">
-            {a.objecoes.length === 0 ? <p className="text-sm text-[var(--coach-suave)]">Nenhuma objeção nesta reunião.</p> : (
+            {a.objecoes.length === 0 ? <p className="text-sm text-texto-2">Nenhuma objeção nesta reunião.</p> : (
               <ul className="flex flex-col gap-4">
                 {a.objecoes.map((o, i) => (
                   <li key={i} className="text-sm">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium">“{o.objecao}”</span>
                       <span className="flex items-center gap-2">
-                        {o.momentoSeg !== null && <button className="num text-xs text-[var(--coach-acento)] underline" onClick={() => player.current?.irPara(o.momentoSeg!)}>{formatarTempo(o.momentoSeg)}</button>}
+                        {o.momentoSeg !== null && <button className="numero text-xs text-coach underline" onClick={() => player.current?.irPara(o.momentoSeg!)}>{formatarTempo(o.momentoSeg)}</button>}
                         <Selo tom={o.bemRespondida ? 'ok' : 'erro'}>{o.bemRespondida ? 'Bem respondida' : 'Dá pra melhorar'}</Selo>
                       </span>
                     </div>
-                    {o.comoRespondeu && <p className="mt-1 text-xs text-[var(--coach-suave)]">Respondeu: {o.comoRespondeu}</p>}
+                    {o.comoRespondeu && <p className="mt-1 text-xs text-texto-2">Respondeu: {o.comoRespondeu}</p>}
                     {o.comoResponderMelhor && <p className="mt-1">💡 {o.comoResponderMelhor}</p>}
                   </li>
                 ))}
@@ -178,12 +178,12 @@ export default function PaginaReuniao({ params }: { params: Promise<{ id: string
           <Cartao titulo="Diagnóstico do cliente">
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
               {([['Situação', a.diagnostico.situacao], ['Dores', a.diagnostico.dores.join(' · ')], ['Objetivo', a.diagnostico.objetivo], ['Quem decide', a.diagnostico.decisor], ['Orçamento', a.diagnostico.orcamento], ['Urgência', a.diagnostico.urgencia]] as const).map(([k, v]) => (
-                <div key={k} className="contents"><dt className="text-[var(--coach-suave)]">{k}</dt><dd>{v || '—'}</dd></div>
+                <div key={k} className="contents"><dt className="text-texto-2">{k}</dt><dd>{v || '—'}</dd></div>
               ))}
             </dl>
           </Cartao>
-          <Cartao titulo="Pontos fortes"><Lista itens={a.pontosFortes} marca="✓" cor="var(--coach-ok)" /></Cartao>
-          <Cartao titulo="O que melhorar"><Lista itens={a.melhorar} marca="→" cor="var(--coach-atencao)" /></Cartao>
+          <Cartao titulo="Pontos fortes"><Lista itens={a.pontosFortes} marca="✓" cor="var(--sucesso)" /></Cartao>
+          <Cartao titulo="O que melhorar"><Lista itens={a.melhorar} marca="→" cor="var(--atencao)" /></Cartao>
         </div>
       )}
 
@@ -196,7 +196,7 @@ export default function PaginaReuniao({ params }: { params: Promise<{ id: string
 }
 
 function Lista({ itens, marca, cor }: { itens: string[]; marca: string; cor: string }) {
-  if (!itens.length) return <p className="text-sm text-[var(--coach-suave)]">—</p>;
+  if (!itens.length) return <p className="text-sm text-texto-2">—</p>;
   return <ul className="flex flex-col gap-2 text-sm">{itens.map((x, i) => <li key={i} className="flex gap-2"><span style={{ color: cor }}>{marca}</span>{x}</li>)}</ul>;
 }
 
@@ -208,9 +208,12 @@ function FollowUp({ id, texto }: { id: string; texto: string }) {
     setEnviando(true);
     setEstado(null);
     try {
-      const r = await api<{ canal: string; link?: string; enviado?: boolean; pendente?: string }>(`/api/coach/reunioes/${id}/followup`, { method: 'POST', body: JSON.stringify({ texto: t }) });
-      if (r.link) window.open(r.link, '_blank', 'noopener');
-      else setEstado({ tom: 'info', msg: r.enviado ? 'Enviado pelo WhatsApp da empresa.' : r.pendente ?? 'Pronto.' });
+      const r = await api<{ canal: string; link?: string; enviado?: boolean; motivo?: string }>(`/api/coach/reunioes/${id}/followup`, { method: 'POST', body: JSON.stringify({ texto: t }) });
+      if (r.enviado) setEstado({ tom: 'info', msg: 'Enviado pelo WhatsApp da empresa. A resposta do cliente aparece no Atendimento.' });
+      else if (r.link) {
+        if (r.motivo) setEstado({ tom: 'erro', msg: `Não deu pelo número da empresa: ${r.motivo} Abrimos o WhatsApp pra você mandar.` });
+        window.open(r.link, '_blank', 'noopener');
+      } else setEstado({ tom: 'info', msg: 'Pronto.' });
     } catch (e) {
       setEstado({ tom: 'erro', msg: (e as Error).message });
     } finally {
@@ -219,12 +222,12 @@ function FollowUp({ id, texto }: { id: string; texto: string }) {
   }
   return (
     <Cartao titulo="Follow-up pro WhatsApp">
-      <textarea rows={5} value={t} onChange={(e) => setT(e.target.value)} className="w-full rounded-[10px] border border-[var(--coach-borda)] bg-transparent p-3 text-sm outline-none focus:border-[var(--coach-acento)]" aria-label="Mensagem de follow-up" />
+      <textarea rows={5} value={t} onChange={(e) => setT(e.target.value)} className="w-full rounded-[10px] border border-borda bg-transparent p-3 text-sm outline-none focus:border-coach" aria-label="Mensagem de follow-up" />
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Botao variante="principal" onClick={mandar} carregando={enviando} disabled={!t.trim()}>Mandar follow-up</Botao>
         <Botao variante="fantasma" onClick={() => navigator.clipboard.writeText(t).then(() => setEstado({ tom: 'info', msg: 'Copiado.' }))}>Copiar</Botao>
       </div>
-      {estado && <p className={`mt-2 text-xs ${estado.tom === 'erro' ? 'text-[var(--coach-erro)]' : 'text-[var(--coach-suave)]'}`}>{estado.msg}</p>}
+      {estado && <p className={`mt-2 text-xs ${estado.tom === 'erro' ? 'text-erro' : 'text-texto-2'}`}>{estado.msg}</p>}
     </Cartao>
   );
 }

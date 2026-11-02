@@ -5,5 +5,5 @@ export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const corpo = await corpoJson(req);
-  return rota(req, (c) => api.criarFoto(c.d, c.quem, c.empresa, corpo));
+  return rota(req, (c) => api.criarFoto(c.d, c.quem, c.empresa, corpo), { gera: true });
 }

@@ -28,11 +28,14 @@ export function dataHora(iso: string) {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 }
 export function corNota(n: number | null | undefined) {
-  if (n === null || n === undefined) return 'var(--coach-suave)';
-  return n >= 8 ? 'var(--coach-ok)' : n >= 6 ? 'var(--coach-atencao)' : 'var(--coach-erro)';
+  if (n === null || n === undefined) return 'var(--texto-2)';
+  return n >= 8 ? 'var(--sucesso)' : n >= 6 ? 'var(--atencao)' : 'var(--erro)';
 }
 
 /** Nota com uma casa e vírgula: 7,5 */
 export function nota(n: number | null | undefined) {
   return n === null || n === undefined ? '—' : n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
+
+/** Papéis que usam o Coach (o servidor confere de novo em lib/coach/servidor.ts). */
+export const PAPEIS_COACH_CLIENTE: ('dono' | 'gestor' | 'atendente' | 'vendedor')[] = ['dono', 'gestor', 'vendedor'];

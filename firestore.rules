@@ -1,8 +1,8 @@
 rules_version = '2';
 
-// Regras da Atena. Espelho de lib/auth/permissoes.ts (ESCRITA_POR_COLECAO) — mude os dois juntos.
+// GERADO por lib/auth/regras-dados.ts (npm run regras). Não edite à mão: mude a tabela e gere de novo.
 // O servidor usa o Admin SDK (não passa por aqui); estas regras protegem o acesso direto do navegador
-// (ex.: caixa de entrada do Atendimento em tempo real).
+// (ex.: caixa de entrada do Atendimento em tempo real). Tudo que não está listado é negado.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -25,8 +25,23 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Índice global de convites: só o servidor.
-    match /convites/{email} {
+    // Só o servidor (índices, segredos cifrados, filas, alertas).
+    match /convites/{id=**} {
+      allow read, write: if false;
+    }
+    match /whatsappNumeros/{id=**} {
+      allow read, write: if false;
+    }
+    match /segredos/{id=**} {
+      allow read, write: if false;
+    }
+    match /filaAtendimento/{id=**} {
+      allow read, write: if false;
+    }
+    match /filaAtendimentoPegos/{id=**} {
+      allow read, write: if false;
+    }
+    match /atena_alertas/{id=**} {
       allow read, write: if false;
     }
 
@@ -37,50 +52,119 @@ service cloud.firestore {
         && request.resource.data.id == resource.data.id
         && request.resource.data.plano == resource.data.plano; // plano/créditos só pelo servidor (cobrança)
 
-      match /membros/{uid} {
+      // equipe
+      match /membros/{id} {
         allow read: if ativo(empresaId);
         allow write: if papelEm(empresaId, ['dono', 'gestor']);
       }
-      match /convites/{email} {
-        allow read, write: if papelEm(empresaId, ['dono', 'gestor']);
+      // convites pendentes
+      match /convites/{id} {
+        allow read: if papelEm(empresaId, ['dono', 'gestor']);
+        allow write: if papelEm(empresaId, ['dono', 'gestor']);
       }
+      // serviços e preços
       match /servicos/{id} {
         allow read: if ativo(empresaId);
         allow write: if papelEm(empresaId, ['dono', 'gestor']);
       }
+      // quem atende
       match /profissionais/{id} {
         allow read: if ativo(empresaId);
         allow write: if papelEm(empresaId, ['dono', 'gestor']);
       }
+      // contatos e funil
       match /contatos/{id} {
         allow read: if ativo(empresaId);
         allow write: if papelEm(empresaId, ['dono', 'gestor', 'atendente', 'vendedor'])
           && (request.resource == null || request.resource.data.empresaId == empresaId);
       }
+      // linha do tempo do contato
       match /atividades/{id} {
         allow read: if ativo(empresaId);
         allow write: if papelEm(empresaId, ['dono', 'gestor', 'atendente', 'vendedor']);
       }
+      // agenda
       match /agendamentos/{id} {
         allow read: if ativo(empresaId);
         allow write: if papelEm(empresaId, ['dono', 'gestor', 'atendente', 'vendedor']);
       }
+      // trava de horário (servidor)
+      match /agenda_travas/{id} {
+        allow read, write: if false;
+      }
+      // caixa de entrada em tempo real (+ mensagens)
       match /conversas/{id=**} {
         allow read: if ativo(empresaId);
         allow write: if papelEm(empresaId, ['dono', 'gestor', 'atendente']);
       }
-      match /reunioes/{id=**} {
+      // conexão (sem token) e treino da IA
+      match /atendimento/{id} {
         allow read: if ativo(empresaId);
+        allow write: if false;
+      }
+      // lembretes já enviados
+      match /atendimento_automacoes/{id} {
+        allow read, write: if false;
+      }
+      // controle de envio
+      match /atendimento_enviados/{id} {
+        allow read, write: if false;
+      }
+      // inscrições de web push
+      match /atendimento_push/{id} {
+        allow read, write: if false;
+      }
+      // deduplicação do webhook
+      match /atendimento_recebidos/{id} {
+        allow read, write: if false;
+      }
+      // índice telefone → contato
+      match /atendimento_telefones/{id} {
+        allow read, write: if false;
+      }
+      // reuniões: dono/gestor veem todas; vendedor vê as dele e as da biblioteca
+      match /reunioes/{id=**} {
+        allow read: if papelEm(empresaId, ['dono', 'gestor'])
+          || (papelEm(empresaId, ['vendedor']) && (resource.data.vendedorUid == request.auth.uid || resource.data.naBiblioteca == true));
         allow write: if papelEm(empresaId, ['dono', 'gestor', 'vendedor']);
       }
-      match /criacoes/{id=**} {
+      // roteiro e configuração do Coach
+      match /coach/{id} {
+        allow read: if papelEm(empresaId, ['dono', 'gestor', 'vendedor']);
+        allow write: if false;
+      }
+      // galeria do Estúdio
+      match /criacoes/{id} {
         allow read: if ativo(empresaId);
         allow write: if papelEm(empresaId, ['dono', 'gestor', 'atendente', 'vendedor']);
       }
-      // Qualquer outra subcoleção: só leitura para membros; escrita pelo servidor.
-      match /{outra}/{id=**} {
+      // calendário de conteúdo
+      match /pautas/{id} {
         allow read: if ativo(empresaId);
         allow write: if false;
+      }
+      // extrato de créditos (só o servidor mexe)
+      match /creditos/{id} {
+        allow read: if ativo(empresaId);
+        allow write: if false;
+      }
+      // assinatura
+      match /cobranca/{id} {
+        allow read: if papelEm(empresaId, ['dono', 'gestor']);
+        allow write: if false;
+      }
+      // pagamentos do Asaas
+      match /pagamentos/{id} {
+        allow read: if papelEm(empresaId, ['dono', 'gestor']);
+        allow write: if false;
+      }
+      // custo de IA (painel interno)
+      match /uso/{id} {
+        allow read, write: if false;
+      }
+      // Qualquer outra subcoleção: negado (o servidor usa o Admin SDK).
+      match /{outra}/{id=**} {
+        allow read, write: if false;
       }
     }
   }

@@ -15,3 +15,4 @@ export { Esqueleto, EsqueletoLista } from './Esqueleto';
 export { Logo, SimboloAtena } from './Logo';
 export { Cabecalho } from './Cabecalho';
 export { ICONES_NAV } from './Icones';
+export { SubNav, type ItemSubNav } from './SubNav';

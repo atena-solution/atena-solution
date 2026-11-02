@@ -33,15 +33,21 @@ function empresaEscolhida(): string | null {
   }
 }
 
-export async function chamarApi<T>(
-  caminho: string,
-  opcoes: { metodo?: string; corpo?: unknown; formulario?: FormData } = {},
-): Promise<T> {
+/** Cabeçalhos do login (idToken + empresa escolhida). Use em qualquer fetch para /api/* fora do `api()`. */
+export async function cabecalhosLogin(): Promise<Record<string, string>> {
   const token = await tokenAtual();
   const headers: Record<string, string> = {};
   if (token) headers.authorization = `Bearer ${token}`;
   const emp = empresaEscolhida();
   if (emp) headers['x-empresa-id'] = emp;
+  return headers;
+}
+
+export async function chamarApi<T>(
+  caminho: string,
+  opcoes: { metodo?: string; corpo?: unknown; formulario?: FormData } = {},
+): Promise<T> {
+  const headers = await cabecalhosLogin();
   let body: BodyInit | undefined;
   if (opcoes.formulario) body = opcoes.formulario;
   else if (opcoes.corpo !== undefined) {

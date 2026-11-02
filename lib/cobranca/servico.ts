@@ -43,6 +43,16 @@ export async function iniciarTeste(d: Deps, empresaId: string, planoEscolhido?: 
   return a;
 }
 
+/**
+ * Assinatura da empresa; se ainda não tem (demo, empresa criada pelo onboarding da Base),
+ * começa o teste grátis contado da data de criação da empresa.
+ */
+export async function assinaturaOuTeste(d: Deps, empresaId: string, criadoEm?: string): Promise<Assinatura | null> {
+  const atual = await d.repo.obterAssinatura(empresaId);
+  if (atual || !criadoEm) return atual;
+  return iniciarTeste({ ...d, agora: () => criadoEm }, empresaId);
+}
+
 async function garantirCliente(d: Deps, a: Assinatura, pagador?: DadosPagador): Promise<Assinatura> {
   if (a.asaasClienteId) return a;
   if (!pagador) throw new ErroCobranca('dados_pagador', 'Informe nome e CPF/CNPJ para gerar a cobrança.');
