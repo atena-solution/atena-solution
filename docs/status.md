@@ -119,7 +119,7 @@ Ver funcionando: `SIMULAR=1 NEXT_PUBLIC_SIMULAR=1 npm run dev` → entrar com `d
 | 1. Kit da marca | `/estudio/marca`, `lib/estudio/marca.ts` (`kitDaEmpresa`, `validarKit`) | pronto: logo, cores, fontes, tom, público, palavras a evitar. Começa da marca do onboarding (`empresas/{id}.marca`) e salva no mesmo campo |
 | 2. Foto de produto | `/estudio/foto`, `lib/estudio/prompts.ts` (prompt central de fidelidade) | pronto: 1–5 fotos, 5 estilos, 4 formatos, até 6 variações. Prompt proíbe mudar cor/estampa/forma, inventar texto ou acessório (testado) |
 | 3. Post/arte | `/estudio/post`, `_componentes/Arte.tsx`, `lib/estudio/arte.ts`, `legenda.ts` | pronto: a IA faz só o fundo; título/subtítulo/chamada são desenhados pelo sistema (canvas) com quebra de linha e contraste calculados; legenda e hashtags pela Claude. Modelos promoção, novidade, depoimento, antes/depois (só com foto real enviada) |
-| 4. Vídeo curto | `/estudio/video`, `app/api/estudio/video` (+ `[id]` consulta o andamento) | pronto: vídeo com IA (Veo, 9:16 ou 1:1) **ou** slideshow animado montado no navegador (canvas + MediaRecorder, 0 crédito) |
+| 4. Vídeo curto | `/estudio/video`, `app/api/estudio/video` (+ `[id]` consulta o andamento) | pronto: vídeo com IA (Gemini Omni Flash — o Veo saiu do ar em out/2026; 9:16 ou 1:1) **ou** slideshow animado montado no navegador (canvas + MediaRecorder, 0 crédito) |
 | 5. Calendário | `/estudio/calendario`, `lib/estudio/calendario.ts` | pronto: sugestão do mês por segmento (datas comemorativas, dias bons de postar), rascunho editável → gerar arte → marcar publicado. A sugestão é regra pura (sem IA, grátis) |
 | 6. Galeria | `/estudio/galeria`, `lib/estudio/galeria.ts` | pronto: filtros por tipo/formato/busca, baixar (PNG), copiar legenda, reaproveitar em post/vídeo, apagar |
 | 7. Créditos | `/estudio/creditos`, `lib/estudio/creditos.ts` | pronto: foto 2 e post 2 por variação, vídeo 10, slideshow/legenda/calendário 0. Debita ANTES de gerar, devolve na hora se falhar (pura, testada), extrato |
@@ -131,8 +131,8 @@ Ver funcionando: `SIMULAR=1 NEXT_PUBLIC_SIMULAR=1 npm run dev` → entrar com `d
 - Visual: componentes de `app/ui` e tokens da Base (tema claro/escuro do app); cartão no Início (`/api/estudio/resumo`).
 
 **Simulado / precisa de teste ao vivo (no Mac)** — marcado `// CONFIRMAR AO VIVO`
-- Gemini imagem (`gemini-2.5-flash-image`) e Veo (`veo-3.1-generate-preview`): nomes dos modelos (dá pra trocar por `GEMINI_MODELO_IMAGEM` / `GEMINI_MODELO_VIDEO`), formato do pedido e da resposta, `aspectRatio`, fidelidade real ao produto.
-- Vídeo: baixar o arquivo do Veo com a chave e guardar no Storage (o `uri` expira); tempo de geração.
+- Gemini imagem (`gemini-2.5-flash-image`) e Omni (`gemini-omni-1.1-flash`, mesmo formato já usado ao vivo na LB): nomes dos modelos (dá pra trocar por `GEMINI_MODELO_IMAGEM` / `GEMINI_MODELO_VIDEO`), formato do pedido e da resposta, `aspectRatio`, fidelidade real ao produto.
+- Vídeo: baixar o arquivo do Omni com a chave (`urlDownloadVideo`) e guardar no Storage (o `uri` expira); tempo de geração.
 - Storage: upload das imagens grandes com token de download (`lib/estudio/dependencias.ts`), CORS para baixar PNG no navegador.
 - Claude: legenda/hashtags com a chave real (`lib/estudio/texto-ia.ts`).
 - Slideshow: MediaRecorder no Safari/iPhone (formato `video/mp4`).
@@ -216,7 +216,7 @@ Tudo está marcado `// CONFIRMAR AO VIVO` no código. Em ordem sugerida:
 2. **Travas no Firestore** com várias funções da Vercel ao mesmo tempo (agenda: equipe × IA; créditos do Estúdio; fila do Atendimento).
 3. **WhatsApp (Meta)**: número de teste, webhook + token de verificação, assinatura, envio de texto/modelo/mídia, digitando, download de mídia (áudio do cliente), erro 131047, versão da Graph API; criar e aprovar os 4 modelos (lembrete, recuperação, avaliação, retomada — a retomada também é usada pelo follow-up do Coach).
 4. **Claude** (`ANTHROPIC_API_KEY`): atendimento com ferramentas (Studio Aurora / Topetes / Mira Luz), análise de reunião de 1 h, legenda do Estúdio, `fallbacks`, campo `usage` registrado no /admin.
-5. **Gemini** (`GEMINI_API_KEY`): transcrição (`responseSchema`, tempos, Files API, janelas de 10 min), áudio OGG do WhatsApp, imagem (`gemini-2.5-flash-image`) e vídeo Veo (nomes dos modelos, formato, baixar o vídeo para o Storage), preços para o custo no /admin.
+5. **Gemini** (`GEMINI_API_KEY`): transcrição (`responseSchema`, tempos, Files API, janelas de 10 min), áudio OGG do WhatsApp, imagem (`gemini-2.5-flash-image`) e vídeo Omni (1:1 aceito?, nomes dos modelos, formato, baixar o vídeo para o Storage), preços para o custo no /admin.
 6. **Asaas** (sandbox): cliente, assinatura, pagamentos, webhook com `asaas-access-token`, estorno; `collectionGroup('cobranca')` com o índice.
 7. **Vercel**: projeto `atena-solution`, variáveis do `.env.example`, `after()` com a rajada de 8 s, cron a cada 5 min (plano Pro).
 8. **Navegador/celular**: gravação do Coach (áudio da aba no Chrome/Edge, Safari `audio/mp4`, 1 h+), slideshow do Estúdio no iPhone, web push (VAPID; iPhone só com o app na tela inicial).
