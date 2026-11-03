@@ -49,11 +49,12 @@ export async function armazenamento(): Promise<Armazenamento> {
 
 /** Coach no plano e conta não vencida? Senão 402 com a mensagem do plano. */
 export async function exigirCoach(empresaId: string) {
-  const { exigirAba } = await import('../planos/portao');
-  await exigirAba(empresaId, 'coach', 'escrever');
+  const { decidirCoachMes, ForaDoPlano } = await import('../planos/portao');
+  const d = await decidirCoachMes(empresaId);
+  if (!d.permitido) throw new ForaDoPlano(d);
 }
 
-export { usoDaEmpresa } from '../planos/portao';
+export { usoDaEmpresa, contarSegundosCoach } from '../planos/portao';
 
 // ---------- Resposta ----------
 

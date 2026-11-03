@@ -16,7 +16,7 @@ describe('preço', () => {
   });
   it('coach cobra por vendedor além dos inclusos', () => {
     expect(calcularPreco({ planoId: 'coach', vendedores: 1 }).mensalTotal).toBe(9700);
-    expect(calcularPreco({ planoId: 'coach', vendedores: 4 }).mensalTotal).toBe(9700 + 3 * 7900);
+    expect(calcularPreco({ planoId: 'coach', vendedores: 4 }).mensalTotal).toBe(9700 + 3 * 9700);
   });
   it('vendedores nunca abaixo dos inclusos nem acima do máximo', () => {
     const c = exigirPlano('completo');

@@ -1,6 +1,6 @@
 // POST: processa UM passo do arquivo enviado (sobe pro Gemini ou transcreve a próxima janela de 10 min).
 // A tela chama em sequência até `terminou`, depois chama /analisar.
-import { armazenamento, autenticar, exigirCoach, repositorio, responder, usoDaEmpresa } from '@/lib/coach/servidor';
+import { armazenamento, autenticar, contarSegundosCoach, exigirCoach, repositorio, responder, usoDaEmpresa } from '@/lib/coach/servidor';
 import { processarArquivo } from '@/lib/coach/servico';
 import { enviarArquivoGemini, simulando, transcreverArquivo } from '@/lib/integracoes/gemini';
 
@@ -20,6 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       transcreverJanela: async (arq, j) => {
         const falas = await transcreverArquivo(simulando() ? null : arq, [j], 'misto');
         await usar('gemini-transcricao', { segundosAudio: Math.round(j.fimSeg - j.inicioSeg) });
+        await contarSegundosCoach(s.empresaId, j.fimSeg - j.inicioSeg);
         return falas;
       },
     });

@@ -1,5 +1,5 @@
 // POST multipart: audio (Blob), trilha, indice, duracaoSeg, inicioSeg (opcional). Guarda no Storage, transcreve e salva o andamento.
-import { armazenamento, autenticar, exigirCoach, repositorio, responder, usoDaEmpresa } from '@/lib/coach/servidor';
+import { armazenamento, autenticar, contarSegundosCoach, exigirCoach, repositorio, responder, usoDaEmpresa } from '@/lib/coach/servidor';
 import { ErroCoach, receberPedaco } from '@/lib/coach/servico';
 import { transcreverPedaco } from '@/lib/integracoes/gemini';
 import type { Trilha } from '@/lib/coach/tipos';
@@ -33,6 +33,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       (c, b, m) => arm.salvar(c, b, m),
     );
     await usoDaEmpresa(s.empresaId)('gemini-transcricao', { segundosAudio: Math.round(pedaco.duracaoSeg ?? 0) });
+    // limite do plano conta o TEMPO da reunião: a trilha do cliente corre junto com a do vendedor, então não soma de novo
+    if (pedaco.trilha !== 'cliente') await contarSegundosCoach(s.empresaId, pedaco.duracaoSeg ?? 0);
     return { pedaco: { ...pedaco, falas: pedaco.falas.length }, duracaoSeg: reuniao.duracaoSeg, pedacos: reuniao.pedacos.length };
   });
 }

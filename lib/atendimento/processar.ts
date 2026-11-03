@@ -30,7 +30,7 @@ export interface Deps {
   /** Transcreve áudio (Gemini — módulo do Coach). Opcional: sem ele a IA só sabe que veio um áudio. */
   transcrever?: (p: { empresaId: string; midiaId: string; mime?: string; token: string }) => Promise<string | null>
   /** Plano: a aba Atendimento pode agir agora? (teste/pago/carência). Sem ele, libera (testes antigos). */
-  acessoAba?: (empresaId: string) => Promise<{ permitido: boolean; mensagem?: string }>
+  acessoAba?: (empresaId: string, conversaId?: string) => Promise<{ permitido: boolean; mensagem?: string }>
   /** Registra tokens gastos pela IA (custo no /admin). */
   registrarUso?: (empresaId: string, modelo: string, uso: { entrada?: number; saida?: number; cacheLeitura?: number; segundosAudio?: number }) => Promise<void>
   /** Envia web push (opcional). */
@@ -252,7 +252,7 @@ export async function responderConversa(empresaId: string, conversa: Conversa, d
   if (conversa.modo === 'humano') return { acao: 'ignorado', motivo: 'equipe assumiu' }
   if (conversa.status !== 'aberta') return { acao: 'ignorado', motivo: 'conversa resolvida' }
   if (deps.acessoAba) {
-    const acesso = await deps.acessoAba(empresaId)
+    const acesso = await deps.acessoAba(empresaId, conversa.id)
     if (!acesso.permitido) return { acao: 'ignorado', motivo: acesso.mensagem ?? 'fora do plano' }
   }
 

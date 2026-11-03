@@ -1,7 +1,9 @@
 // Integração com a Claude API (Anthropic) para o Atendimento.
 //
 // Doc oficial (consultada em 01/11/2026 via referência do SDK @anthropic-ai/sdk 1.3):
-// - POST /v1/messages via SDK oficial; modelo de conversa `claude-sonnet-5-5`, respostas rápidas `claude-haiku-5-5`.
+// - POST /v1/messages via SDK oficial. Conversa no `claude-haiku-5-5` (US$ 0,10/0,50 por MTok — ~R$ 0,03 por conversa);
+//   `claude-sonnet-5-5` (US$ 2/10) só quando o pedido marca `avancado` (03/11/2026: Sonnet custava ~R$ 0,55/conversa e
+//   1.000 conversas no plano de R$ 297 dariam prejuízo).
 // - NÃO mandar temperature/top_p/top_k (a API recusa com 400 desde a versão 2026-10-21).
 // - Ferramentas (tool use) com `strict: true` e `additionalProperties: false`; `tool_choice` forçado (any/tool)
 //   dá 400 no Sonnet 5.5 — usamos o padrão `auto` e orientamos pelo prompt.
@@ -20,7 +22,9 @@ import type {
   BetaTool,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages'
 
-export const MODELO_CONVERSA = 'claude-sonnet-5-5'
+export const MODELO_AVANCADO = 'claude-sonnet-5-5'
+export const MODELO_CONVERSA = 'claude-haiku-5-5'
+/** Mantido por compatibilidade: hoje é o mesmo modelo da conversa. */
 export const MODELO_RAPIDO = 'claude-haiku-5-5'
 
 export type { BetaContentBlock, BetaMessageParam, BetaTextBlockParam, BetaTool }
@@ -30,6 +34,8 @@ export interface PedidoIA {
   mensagens: BetaMessageParam[]
   ferramentas: BetaTool[]
   rapido?: boolean
+  /** Usa o Sonnet (mais caro) em vez do Haiku. */
+  avancado?: boolean
 }
 
 export interface RespostaIA {
@@ -47,7 +53,7 @@ export function medirIA(ia: ClienteIA, aoUsar: (modelo: string, uso: NonNullable
       const r = await ia.criar(p)
       if (r.uso) {
         try {
-          await aoUsar(r.modelo ?? (p.rapido ? MODELO_RAPIDO : MODELO_CONVERSA), r.uso)
+          await aoUsar(r.modelo ?? (p.avancado ? MODELO_AVANCADO : MODELO_CONVERSA), r.uso)
         } catch {
           /* registro de uso nunca atrapalha o atendimento */
         }
@@ -75,7 +81,7 @@ export function iaReal(): ClienteIA {
   const client = sdk
   return {
     async criar(p) {
-      const modelo = p.rapido ? MODELO_RAPIDO : MODELO_CONVERSA
+      const modelo = p.avancado ? MODELO_AVANCADO : MODELO_CONVERSA
       const r = await client.beta.messages.create({
         model: modelo,
         max_tokens: 16000,
@@ -84,8 +90,8 @@ export function iaReal(): ClienteIA {
         tools: p.ferramentas,
         output_config: { effort: 'low' },
         cache_control: { type: 'ephemeral' },
-        // Server-side fallback: só no Sonnet 5.5 e só na Claude API.
-        ...(modelo === MODELO_CONVERSA ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
+        // Server-side fallback: só no Sonnet 5.5 e só na Claude API (o Haiku 5.5 não tem).
+        ...(modelo === MODELO_AVANCADO ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
       })
       const u = r.usage
       return {

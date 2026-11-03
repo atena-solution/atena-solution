@@ -106,7 +106,7 @@ describe('api do Estúdio', () => {
     const c = corpo(await api.criarVideo(d, e1, { foto: FOTO, formato: '9:16', movimento: 'giro-suave', duracaoSeg: 6 })).criacao;
     expect(corpo(await api.consultarVideo(d, e1, c.id)).criacao.status).toBe('pronta');
     const cr = corpo(await api.creditos(d, e1));
-    expect(cr.saldo).toBe(40);
+    expect(cr.saldo).toBe(25);
     expect(cr.extrato).toHaveLength(1);
     expect(corpo(await api.creditos(d, e2)).extrato).toHaveLength(0);
   });

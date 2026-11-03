@@ -113,7 +113,7 @@ export function situacaoAcesso(
 
 export type Acao = 'ler' | 'escrever';
 
-export interface Decisao { permitido: boolean; motivo?: 'sem_plano' | 'aba_fora_do_plano' | 'somente_leitura'; mensagem?: string }
+export interface Decisao { permitido: boolean; motivo?: 'sem_plano' | 'aba_fora_do_plano' | 'somente_leitura' | 'limite'; mensagem?: string }
 
 /**
  * Regra única de acesso às abas. As outras sessões chamam isto antes de agir, por exemplo:
