@@ -60,7 +60,7 @@ export const REGRAS_EMPRESA: Record<string, RegraColecao> = {
 };
 
 /** Coleções do topo: tudo só pelo servidor (exceto o próprio usuário). */
-export const SO_SERVIDOR_TOPO = ['convites', 'whatsappNumeros', 'segredos', 'filaAtendimento', 'filaAtendimentoPegos', 'atena_alertas'];
+export const SO_SERVIDOR_TOPO = ['convites', 'whatsappNumeros', 'segredos', 'filaAtendimento', 'filaAtendimentoPegos', 'atena_alertas', 'ppAssinantes'];
 
 // ---------------------------------------------------------------- decisão pura (espelha as regras)
 

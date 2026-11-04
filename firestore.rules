@@ -44,6 +44,9 @@ service cloud.firestore {
     match /atena_alertas/{id=**} {
       allow read, write: if false;
     }
+    match /ppAssinantes/{id=**} {
+      allow read, write: if false;
+    }
 
     match /empresas/{empresaId} {
       allow read: if ativo(empresaId);

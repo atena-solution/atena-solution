@@ -32,8 +32,8 @@ export const GET = rota(undefined, async (_req, { sessao, dados }) => {
       testeAte: assinatura.testeAte,
       pagoAte: assinatura.pagoAte,
       canceladaEm: assinatura.canceladaEm,
-      temCadastroPagador: !!assinatura.asaasClienteId,
-      assinaturaAtiva: !!assinatura.asaasAssinaturaId,
+      temCadastroPagador: !!assinatura.asaasClienteId || !!d.pp, // Perfect Pay pede os dados no checkout dela
+      assinaturaAtiva: !!assinatura.asaasAssinaturaId || (!!assinatura.ppEmail && !assinatura.canceladaEm),
       faturaAbertaUrl: podeVerFinanceiro ? assinatura.faturaAbertaUrl : undefined,
       valorAtual: calcularPreco({ planoId: assinatura.planoId, vendedores: assinatura.vendedores, ciclo: assinatura.ciclo }).valorCobrado,
     },
@@ -41,6 +41,7 @@ export const GET = rota(undefined, async (_req, { sessao, dados }) => {
     pagamentos: pagamentos.map((p) => ({ pagamentoId: p.pagamentoId, tipo: p.tipo, efeito: p.efeito, valor: p.valor, status: p.status, quando: p.quando, creditos: p.creditos })),
     planos: CONFIG_PLANOS.planos,
     pacotes: CONFIG_PLANOS.pacotesCreditos,
-    simulado: modoSimulado(),
+    simulado: modoSimulado() && !d.pp,
+    perfectpay: !!d.pp,
   });
 });

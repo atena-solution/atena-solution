@@ -23,6 +23,9 @@ export interface Assinatura {
   /** Cancelada pelo cliente: vale até `pagoAte` e não renova. */
   canceladaEm?: string;
   asaasClienteId?: string;
+  /** Perfect Pay: e-mail de quem assinou (acha a empresa nas renovações) e plano da última venda. */
+  ppEmail?: string;
+  ppCodigo?: string;
   asaasAssinaturaId?: string;
   /** Link da fatura em aberto (para o botão "Pagar agora"). */
   faturaAbertaUrl?: string;

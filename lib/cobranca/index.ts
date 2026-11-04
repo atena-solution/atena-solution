@@ -22,5 +22,17 @@ export async function depsCobranca(): Promise<Deps> {
       g.__atenaRepoCobranca = new RepositorioCobrancaFirestore(firestoreAdmin() as never);
     }
   }
-  return { repo: g.__atenaRepoCobranca, asaas: asaas() };
+  const { perfectpay, ppLigado } = await import('./perfectpay');
+  if (!ppLigado()) return { repo: g.__atenaRepoCobranca, asaas: asaas() };
+  const bancoPP = b ?? (await banco());
+  const { juntar } = await import('../dados/banco');
+  return {
+    repo: g.__atenaRepoCobranca,
+    asaas: asaas(),
+    pp: perfectpay(),
+    assinantes: {
+      async obter(email) { return (await bancoPP.obter<{ empresaId: string }>(juntar('ppAssinantes', email)))?.empresaId ?? null; },
+      async gravar(email, empresaId) { await bancoPP.gravar(juntar('ppAssinantes', email), { empresaId, em: new Date().toISOString() }); },
+    },
+  };
 }

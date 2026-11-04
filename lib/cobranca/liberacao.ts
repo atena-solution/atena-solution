@@ -6,7 +6,7 @@ import type { Assinatura } from '../planos/acesso';
 import { CONFIG_PLANOS, type ConfigPlanos, type PlanoId } from '../planos/config';
 import { aplicarMovimento, type MovimentoCredito } from '../planos/creditos';
 import { fimDoDiaSP, maisTarde, somarMeses } from '../planos/datas';
-import { obterPacote, obterPlano } from '../planos/preco';
+import { calcularPreco, obterPacote, obterPlano } from '../planos/preco';
 import type { PagamentoAsaas, StatusPagamentoAsaas } from './asaas';
 
 // ---------------------------------------------------------------- referência externa
@@ -74,8 +74,11 @@ export type Decisao =
   | { acao: 'recusar'; motivo: string } // algo errado (empresa trocada, valor errado): registrar alerta pro admin
   | { acao: 'aplicar'; resumo: string; mudancas: Mudancas };
 
+/** Pagamento vindo da Perfect Pay (lib/cobranca/perfectpay.ts): não tem cliente do Asaas e traz o plano comprado. */
+type PagamentoLido = PagamentoAsaas & { provedor?: 'perfectpay'; planoAtena?: { planoId: PlanoId; ciclo: 'mensal' | 'anual' } };
+
 export function decidir(
-  pag: PagamentoAsaas,
+  pag: PagamentoLido,
   estado: EstadoCobranca,
   agoraIso: string,
   cfg: ConfigPlanos = CONFIG_PLANOS,
@@ -85,10 +88,18 @@ export function decidir(
   if (ref.empresaId !== estado.empresaId) return { acao: 'recusar', motivo: 'Pagamento de outra empresa.' };
 
   // A empresa precisa ser dona do cliente Asaas do pagamento (impede usar a cobrança de outra empresa).
-  const a = estado.assinatura;
-  if (!a?.asaasClienteId || a.asaasClienteId !== pag.customer)
+  // Perfect Pay: a venda já foi lida na API e ligada à empresa pelo `src` do checkout (ou pelo e-mail do assinante).
+  let a = estado.assinatura;
+  if (pag.provedor === 'perfectpay') {
+    if (!a) return { acao: 'recusar', motivo: 'Empresa sem assinatura.' };
+    if (pag.planoAtena && estaPago(pag.status)) {
+      const p = obterPlano(pag.planoAtena.planoId, cfg);
+      if (p) a = { ...a, planoId: p.id, ciclo: pag.planoAtena.ciclo, vendedores: p.vendedoresInclusos, canceladaEm: undefined };
+    }
+  } else if (!a?.asaasClienteId || a.asaasClienteId !== pag.customer)
     return { acao: 'recusar', motivo: 'Cliente do Asaas não corresponde à empresa.' };
 
+  if (!a) return { acao: 'recusar', motivo: 'Empresa sem assinatura.' };
   const reg = estado.registro;
 
   if (estaPago(pag.status)) {
@@ -105,13 +116,18 @@ export function decidir(
   return { acao: 'nada', motivo: `Status ${pag.status}: aguardando pagamento.` };
 }
 
-function liberarPeriodo(pag: PagamentoAsaas, a: Assinatura, estado: EstadoCobranca, agoraIso: string, cfg: ConfigPlanos): Decisao {
+function liberarPeriodo(pag: PagamentoLido, a: Assinatura, estado: EstadoCobranca, agoraIso: string, cfg: ConfigPlanos): Decisao {
   if (pag.subscription && a.asaasAssinaturaId && pag.subscription !== a.asaasAssinaturaId)
     return { acao: 'recusar', motivo: 'Mensalidade de uma assinatura antiga ou de outra empresa.' };
   if (!(pag.value > 0)) return { acao: 'recusar', motivo: 'Valor inválido.' };
 
   const plano = obterPlano(a.planoId, cfg);
   if (!plano) return { acao: 'recusar', motivo: `Plano ${a.planoId} não existe mais na configuração.` };
+  // Perfect Pay: o valor pago tem que cobrir o preço do plano comprado (tolerância de 1 centavo).
+  if (pag.provedor === 'perfectpay') {
+    const devido = calcularPreco({ planoId: plano.id, vendedores: plano.vendedoresInclusos, ciclo: a.ciclo }, cfg).valorCobrado;
+    if (Math.round(pag.value * 100) + 1 < devido) return { acao: 'recusar', motivo: 'Valor pago menor que o preço do plano.' };
+  }
 
   const meses = a.ciclo === 'anual' ? 12 : 1;
   // O período pago começa no vencimento da cobrança (o 1º vencimento é o fim do teste grátis).
@@ -136,7 +152,7 @@ function liberarPeriodo(pag: PagamentoAsaas, a: Assinatura, estado: EstadoCobran
   return { acao: 'aplicar', resumo: `Plano ${plano.nome} liberado até ${pagoAteDepois.slice(0, 10)}.`, mudancas };
 }
 
-function creditarPacote(pag: PagamentoAsaas, pacoteId: string, estado: EstadoCobranca, agoraIso: string, cfg: ConfigPlanos): Decisao {
+function creditarPacote(pag: PagamentoLido, pacoteId: string, estado: EstadoCobranca, agoraIso: string, cfg: ConfigPlanos): Decisao {
   const pacote = obterPacote(pacoteId, cfg);
   if (!pacote) return { acao: 'recusar', motivo: `Pacote ${pacoteId} não existe.` };
   // Valor pago tem que cobrir o preço do pacote (tolerância de 1 centavo).
@@ -155,11 +171,11 @@ function creditarPacote(pag: PagamentoAsaas, pacoteId: string, estado: EstadoCob
   };
 }
 
-function desfazer(pag: PagamentoAsaas, a: Assinatura, reg: RegistroPagamento, estado: EstadoCobranca, agoraIso: string): Decisao {
+function desfazer(pag: PagamentoLido, a: Assinatura | null, reg: RegistroPagamento, estado: EstadoCobranca, agoraIso: string): Decisao {
   const mudancas: Mudancas = {};
   if (reg.tipo === 'assinatura' && reg.pagoAteDepois) {
     // Volta o pagoAte só se este pagamento ainda é o último que estendeu o acesso.
-    if (a.pagoAte === reg.pagoAteDepois) mudancas.assinatura = { ...a, pagoAte: reg.pagoAteAntes, atualizadoEm: agoraIso };
+    if (a && a.pagoAte === reg.pagoAteDepois) mudancas.assinatura = { ...a, pagoAte: reg.pagoAteAntes, atualizadoEm: agoraIso };
   }
   if (reg.creditos) {
     const r = aplicarMovimento(estado.saldoCreditos, new Set(), {

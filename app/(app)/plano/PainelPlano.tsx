@@ -23,6 +23,7 @@ interface Resposta {
   planos: Plano[];
   pacotes: PacoteCreditos[];
   simulado: boolean;
+  perfectpay?: boolean;
 }
 
 const FASE: Record<Fase, { rotulo: string; tom: TomSelo }> = {
@@ -90,10 +91,11 @@ export function PainelPlano({ embutido = false }: { embutido?: boolean }) {
 
   async function cancelar() {
     if (!confirm('Cancelar a renovação? Você continua usando até o fim do período já pago.')) return;
+    const viaPP = !!dados?.perfectpay;
     setOcupado('cancelar');
     try {
       const res = await api<{ usaAte?: string }>('/api/cobranca/cancelar', { metodo: 'POST' });
-      avisar(`Renovação cancelada. Você usa até ${res.usaAte ? formatarDataBR(res.usaAte) : 'o fim do período'}.`, 'info');
+      avisar(`Renovação cancelada. Você usa até ${res.usaAte ? formatarDataBR(res.usaAte) : 'o fim do período'}.${viaPP ? ' Para parar a cobrança no cartão, cancele também pelo link do e-mail da Perfect Pay.' : ''}`, 'info');
       recarregar();
     } catch (e) {
       avisar((e as Error).message, 'erro');
@@ -247,7 +249,7 @@ function ModalPagador({ pedido, precisaDados, ocupado, aoFechar, aoConfirmar, re
             <Campo rotulo="CPF ou CNPJ" value={doc} inputMode="numeric" onChange={(e) => setDoc(e.target.value)} erro={erro || undefined} />
           </>
         )}
-        <p className="text-[13px] text-texto-2">Você escolhe Pix, boleto ou cartão na fatura. O acesso libera assim que o pagamento for confirmado.</p>
+        <p className="text-[13px] text-texto-2">Você escolhe Pix, boleto ou cartão no pagamento seguro (abre em outra aba). O acesso libera assim que o pagamento for confirmado.</p>
       </div>
     </Modal>
   );

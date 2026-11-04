@@ -11,10 +11,15 @@ import type { ClienteAsaasApi, FormaPagamento } from './asaas';
 import { documentoValido, soDigitos } from './documento';
 import { decidir, lerReferencia, montarReferencia } from './liberacao';
 import type { RepositorioCobranca } from './repositorio';
+import { codigoDoPacote, codigoDoPlano, emailDaVenda, itemDaVenda, linkCheckout, planoDaVenda, vendaParaPagamento, type ClientePP, type VendaPP } from './perfectpay';
 
 export interface Deps {
   repo: RepositorioCobranca;
   asaas: ClienteAsaasApi;
+  /** Com PERFECTPAY_API_KEY: cobra pela Perfect Pay (checkout dela) e o Asaas não é usado. */
+  pp?: ClientePP;
+  /** Perfect Pay: e-mail do assinante → empresa (renovações sem `src`). */
+  assinantes?: { obter(email: string): Promise<string | null>; gravar(email: string, empresaId: string): Promise<void> };
   agora?: () => string;
   cfg?: ConfigPlanos;
 }
@@ -84,6 +89,16 @@ export async function assinar(d: Deps, p: PedidoAssinatura): Promise<{ assinatur
   const orc = calcularPreco({ planoId: p.planoId, vendedores: p.vendedores, ciclo: p.ciclo }, cfg);
   const plano = exigirPlano(p.planoId, cfg);
 
+  if (d.pp) {
+    // Perfect Pay: o checkout é fixo por plano (vendedores inclusos). Nada muda aqui: libera quando a venda for lida como aprovada.
+    if (plano.precoVendedorExtra > 0 && orc.vendedores > plano.vendedoresInclusos)
+      throw new ErroCobranca('vendedores', `Pelo site o plano sai com ${plano.vendedoresInclusos} vendedor(es). Para mais vendedores, fale com a gente no WhatsApp.`);
+    const codigo = codigoDoPlano(plano.id, orc.ciclo);
+    const a = (await d.repo.obterAssinatura(p.empresaId)) ?? novaAssinaturaDeTeste(p.empresaId, agora, cfg);
+    if (!codigo) throw new ErroCobranca('plano', 'Esse plano ainda não está à venda.');
+    return { assinatura: a, faturaUrl: linkCheckout(codigo, montarReferencia({ tipo: 'assinatura', empresaId: p.empresaId }))! };
+  }
+
   let a = (await d.repo.obterAssinatura(p.empresaId)) ?? novaAssinaturaDeTeste(p.empresaId, agora, cfg);
   a = await garantirCliente(d, a, p.pagador);
 
@@ -119,6 +134,12 @@ export async function comprarCreditos(
   if (!pacote) throw new ErroCobranca('pacote', 'Pacote de créditos não encontrado.');
   let a = await d.repo.obterAssinatura(empresaId);
   if (!a) throw new ErroCobranca('sem_plano', 'Crie a conta antes de comprar créditos.');
+  if (d.pp) {
+    const codigo = codigoDoPacote(pacote.id);
+    if (!codigo) throw new ErroCobranca('pacote', 'Esse pacote ainda não está à venda.');
+    const ref = montarReferencia({ tipo: 'creditos', empresaId, pacoteId: pacote.id });
+    return { faturaUrl: linkCheckout(codigo, ref)!, pagamentoId: ref };
+  }
   const comCliente = await garantirCliente(d, a, pagador);
   if (comCliente !== a) { a = comCliente; await d.repo.salvarAssinatura({ ...a, atualizadoEm: agoraDe(d) }); }
   const c = await d.asaas.criarCobranca({
@@ -132,7 +153,8 @@ export async function comprarCreditos(
 export async function cancelar(d: Deps, empresaId: string): Promise<Assinatura> {
   const a = await d.repo.obterAssinatura(empresaId);
   if (!a) throw new ErroCobranca('sem_plano', 'Não há assinatura para cancelar.');
-  if (a.asaasAssinaturaId) await d.asaas.cancelarAssinatura(a.asaasAssinaturaId);
+  // Perfect Pay: a recorrência é cancelada pelo assinante no e-mail/área da Perfect Pay (sem API de cancelar). // CONFIRMAR AO VIVO
+  if (a.asaasAssinaturaId && !d.pp) await d.asaas.cancelarAssinatura(a.asaasAssinaturaId);
   const nova = { ...a, canceladaEm: agoraDe(d), asaasAssinaturaId: undefined, faturaAbertaUrl: undefined, atualizadoEm: agoraDe(d) };
   await d.repo.salvarAssinatura(nova);
   return nova;
@@ -147,6 +169,12 @@ export interface ResultadoProcessamento { pagamentoId: string; resultado: 'aplic
 export async function processarPagamento(d: Deps, pagamentoId: string): Promise<ResultadoProcessamento> {
   const pag = await d.asaas.buscarPagamento(pagamentoId);
   if (!pag) return { pagamentoId, resultado: 'nao_encontrado', resumo: 'Pagamento não existe no Asaas.' };
+  return aplicarPagamentoLido(d, pag);
+}
+
+/** Regra única: o pagamento já foi LIDO na API do provedor (Asaas ou Perfect Pay). */
+async function aplicarPagamentoLido(d: Deps, pag: Parameters<typeof decidir>[0]): Promise<ResultadoProcessamento> {
+  const pagamentoId = pag.id;
   const ref = lerReferencia(pag.externalReference);
   if (!ref) return { pagamentoId, resultado: 'nada', resumo: 'Cobrança não é da Atena.' };
 
@@ -179,6 +207,57 @@ export async function sincronizar(d: Deps, empresaId: string): Promise<Resultado
   const aberta = lista.find((f) => f.status === 'PENDING' || f.status === 'OVERDUE');
   const atual = await d.repo.obterAssinatura(empresaId);
   if (atual && atual.faturaAbertaUrl !== aberta?.invoiceUrl) await d.repo.salvarAssinatura({ ...atual, faturaAbertaUrl: aberta?.invoiceUrl, atualizadoEm: agoraDe(d) });
+  return out;
+}
+
+// ---------------------------------------------------------------- Perfect Pay
+
+/**
+ * Lê a venda NA API da Perfect Pay e aplica (gatilho do postback, botão "Já paguei", cron).
+ * Empresa = `src` do checkout (atena:assinatura:<id> / atena:creditos:<pacote>:<id>) ou, na renovação sem src, o e-mail do assinante.
+ */
+export async function processarVendaPP(d: Deps, code: string, vendaLida?: VendaPP): Promise<ResultadoProcessamento> {
+  if (!d.pp) return { pagamentoId: `pp_${code}`, resultado: 'nada', resumo: 'Perfect Pay desligada.' };
+  const v = vendaLida ?? (await d.pp.buscarVenda(code));
+  if (!v) return { pagamentoId: `pp_${code}`, resultado: 'nao_encontrado', resumo: 'Venda não existe na Perfect Pay.' };
+  const item = itemDaVenda(v);
+  if (!item) return { pagamentoId: `pp_${code}`, resultado: 'nada', resumo: 'Venda de outro produto.' };
+  const email = emailDaVenda(v);
+  let ref = lerReferencia(v.metadata?.src ?? null);
+  if (!ref && item.tipo === 'plano' && email && d.assinantes) {
+    const empresaId = await d.assinantes.obter(email);
+    if (empresaId) ref = { tipo: 'assinatura', empresaId };
+  }
+  if (!ref) return { pagamentoId: `pp_${code}`, resultado: 'nada', resumo: 'Venda sem empresa da Atena.' };
+  if ((item.tipo === 'plano') !== (ref.tipo === 'assinatura') || (item.tipo === 'creditos' && ref.tipo === 'creditos' && item.pacoteId !== ref.pacoteId))
+    return { pagamentoId: `pp_${code}`, resultado: 'recusado', resumo: 'Venda não bate com o pedido.' };
+  const a = await d.repo.obterAssinatura(ref.empresaId);
+  const inicio = maisTarde(agoraDe(d), maisTarde(a?.testeAte, a?.pagoAte))!;
+  const pag = vendaParaPagamento(v, montarReferencia(ref), dataSP(inicio));
+  if (!pag) return { pagamentoId: `pp_${code}`, resultado: 'nada', resumo: 'Venda sem código.' };
+  const r = await aplicarPagamentoLido(d, pag);
+  if (r.resultado === 'aplicado' && item.tipo === 'plano') {
+    const atual = await d.repo.obterAssinatura(ref.empresaId);
+    if (atual) await d.repo.salvarAssinatura({ ...atual, ppEmail: email || atual.ppEmail, ppCodigo: planoDaVenda(v) ?? atual.ppCodigo, atualizadoEm: agoraDe(d) });
+    if (email && d.assinantes) await d.assinantes.gravar(email, ref.empresaId);
+  }
+  return r;
+}
+
+/** "Já paguei" com Perfect Pay: procura as vendas do e-mail de quem está logado (e do assinante já conhecido). */
+export async function sincronizarPP(d: Deps, empresaId: string, emailLogado: string): Promise<ResultadoProcessamento[]> {
+  if (!d.pp) return [];
+  const a = await d.repo.obterAssinatura(empresaId);
+  const emails = [...new Set([emailLogado, a?.ppEmail].filter(Boolean).map((e) => String(e).toLowerCase()))];
+  const out: ResultadoProcessamento[] = [];
+  for (const email of emails) {
+    for (const v of await d.pp.vendasDoEmail(email)) {
+      const ref = lerReferencia(v.metadata?.src ?? null);
+      if (ref && ref.empresaId !== empresaId) continue; // venda de outra empresa
+      if (!ref && emailDaVenda(v) !== a?.ppEmail) continue;
+      out.push(await processarVendaPP(d, String(v.transaction_token ?? ''), v));
+    }
+  }
   return out;
 }
 
