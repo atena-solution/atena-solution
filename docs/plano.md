@@ -19,3 +19,8 @@ as outras sessões criam o próprio código dentro de `app/(app)/<modulo>/` e `l
 
 ## Depois (no Mac, com o Lincoln)
 Firebase novo, Vercel nova, domínio, número de WhatsApp de teste, chaves da Anthropic/Gemini, testes ao vivo, 1ºs clientes piloto (barbearia Topetes e clínica Mira Luz para o Atendimento; time comercial da LB para o Coach — só como cliente de teste, dados separados).
+
+## Decisões do Lincoln (01/11/2026)
+- Preços CONFIRMADOS como sugeridos em `lib/planos/config.ts`: Atendimento R$ 297/mês; Coach R$ 97 (1 vendedor) + R$ 79 por vendedor; Estúdio R$ 97 (100 créditos); Pacote completo R$ 447 (3 vendedores, 150 créditos) + R$ 59 por vendedor; anual −15%; teste grátis 7 dias.
+- Domínio: **atenasolution.com.br** (registro pelo Lincoln no Registro.br).
+- Depois da junção (sessão F): Firebase novo, Vercel nova, número de WhatsApp de teste, chaves (Anthropic, Gemini, Asaas) e teste ao vivo no Mac.

@@ -5,6 +5,7 @@ import type { Agendamento, Atividade, Contato, Profissional, Servico, StatusAgen
 import { horariosLivres, podeMudarStatus, verificarHorario, NOME_STATUS } from './horarios';
 import { etapaAposAgenda, etapasDaEmpresa, moverEtapa } from '../contatos/funil';
 import { horaLocal, dataLocal } from './fuso';
+import { caminhoTravaAgenda, travaAgenda } from './trava';
 
 /**
  * Operações da agenda sobre os dados de UMA empresa. Usadas pelas rotas /api/agenda
@@ -85,6 +86,17 @@ export async function marcarAgendamento(
   quem: Quem,
   agora = new Date(),
 ): Promise<Agendamento> {
+  const trava = await travaAgenda();
+  // conferir e gravar dentro da MESMA trava da IA do Atendimento: ninguém pega o mesmo horário ao mesmo tempo
+  return trava.comTrava(caminhoTravaAgenda(dados.empresaId, e.profissionalId), () => marcarTravado(dados, e, quem, agora));
+}
+
+async function marcarTravado(
+  dados: AcessoEmpresa,
+  e: { contatoId: string; servicoId: string; profissionalId: string; inicio: string; observacao?: string },
+  quem: Quem,
+  agora: Date,
+): Promise<Agendamento> {
   const { empresa, servicos, profissionais, agendamentos } = await carregar(dados);
   const contato = await dados.obter<Contato>('contatos', e.contatoId);
   if (!contato) throw new ErroHttp(400, 'Cliente não encontrado.');
@@ -126,6 +138,19 @@ export async function remarcarAgendamento(
   e: { inicio?: string; profissionalId?: string; servicoId?: string; observacao?: string },
   quem: Quem,
   agora = new Date(),
+): Promise<Agendamento> {
+  const antes = await dados.obter<Agendamento>('agendamentos', id);
+  if (!antes) throw new ErroHttp(400, 'Agendamento não encontrado.');
+  const trava = await travaAgenda();
+  return trava.comTrava(caminhoTravaAgenda(dados.empresaId, e.profissionalId ?? antes.profissionalId), () => remarcarTravado(dados, id, e, quem, agora));
+}
+
+async function remarcarTravado(
+  dados: AcessoEmpresa,
+  id: string,
+  e: { inicio?: string; profissionalId?: string; servicoId?: string; observacao?: string },
+  quem: Quem,
+  agora: Date,
 ): Promise<Agendamento> {
   const { empresa, servicos, profissionais, agendamentos } = await carregar(dados);
   const atual = achar(agendamentos, id, 'Agendamento');

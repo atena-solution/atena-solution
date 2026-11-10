@@ -1,17 +1,18 @@
 // Integração de geração de imagem e vídeo (Gemini) — usada pelo Estúdio.
 // Com SIMULAR=1 devolve imagens/vídeos de exemplo, sem rede e sem chave.
 //
-// Formato da API (doc oficial Google AI "Image generation" e "Generate videos with Veo",
-// conforme conhecido em 2026-11-01 — // CONFIRMAR AO VIVO tudo abaixo):
+// Formato da API (doc oficial Google AI "Image generation"; vídeo = Gemini Omni Flash, o mesmo formato já
+// usado ao vivo na LB em out/2026 — o Veo saiu do ar em out/2026 e dá 404 "use gemini-omni-1.1-flash"):
 // - Imagem: POST https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent
 //   header x-goog-api-key; body { contents:[{ parts:[{text}, {inline_data:{mime_type, data(base64)}}...] }],
 //   generationConfig:{ responseModalities:['IMAGE'], imageConfig:{ aspectRatio:'1:1'|'3:4'|'4:5'|'9:16' } } }
 //   resposta: candidates[0].content.parts[].inlineData { mimeType, data }
-// - Vídeo (Veo): POST .../models/{modelo}:predictLongRunning
-//   body { instances:[{ prompt, image:{ bytesBase64Encoded, mimeType } }], parameters:{ aspectRatio:'9:16', durationSeconds } }
-//   resposta: { name } → GET https://generativelanguage.googleapis.com/v1beta/{name}
-//   até { done:true, response:{ generateVideoResponse:{ generatedSamples:[{ video:{ uri } }] } } }
-//   (o uri precisa do x-goog-api-key para baixar)
+// - Vídeo (Omni): POST https://generativelanguage.googleapis.com/v1beta/interactions
+//   body { model, input:[{ type:'user_input', content:[{type:'image', mime_type, data}, {type:'text', text}] }],
+//          response_format:{ type:'video', aspect_ratio:'9:16', delivery:'uri' }, background:true }
+//   resposta: { id } → GET .../v1beta/interactions/{id} até steps[].type 'model_output' trazer content type 'video'
+//   ({ uri } ou { data }); status completed/failed/cancelled/incomplete sem vídeo = bloqueado/falhou.
+//   O uri é do Files API (/v1beta/files/x) e só baixa com x-goog-api-key em /download/...:download?alt=media.
 
 export type Proporcao = '1:1' | '3:4' | '4:5' | '9:16';
 
@@ -46,7 +47,7 @@ export const simulando = () => process.env.SIMULAR === '1';
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 // CONFIRMAR AO VIVO: nomes dos modelos (dá para trocar por variável de ambiente sem mexer no código).
 const MODELO_IMAGEM = () => process.env.GEMINI_MODELO_IMAGEM || 'gemini-2.5-flash-image';
-const MODELO_VIDEO = () => process.env.GEMINI_MODELO_VIDEO || 'veo-3.1-generate-preview';
+const MODELO_VIDEO = () => process.env.GEMINI_MODELO_VIDEO || 'gemini-omni-1.1-flash';
 
 function chave(): string {
   const k = process.env.GEMINI_API_KEY;
@@ -93,21 +94,53 @@ export async function gerarImagens(p: PedidoImagem): Promise<ResultadoImagem> {
   return { imagens, falhas: p.quantidade - imagens.length, erros };
 }
 
+/** Corpo do pedido de vídeo pro Omni (foto do produto + roteiro). Puro, testado. */
+export function pedidoVideoOmni(p: PedidoVideo, modelo = MODELO_VIDEO()) {
+  const { mimeType, base64 } = dividirDataUrl(p.foto);
+  return {
+    model: modelo,
+    input: [{ type: 'user_input', content: [
+      { type: 'image', mime_type: mimeType, data: base64 },
+      // O Omni não tem campo de duração: vai no texto.
+      { type: 'text', text: `${p.prompt}\nDuração do vídeo: cerca de ${p.duracaoSeg} segundos.` },
+    ] }],
+    // Confirmado ao vivo na LB: 9:16. CONFIRMAR AO VIVO: 1:1 (se o Omni recusar, cair pra 9:16).
+    response_format: { type: 'video', aspect_ratio: p.proporcao, delivery: 'uri' },
+    background: true,
+  };
+}
+
+/** Lê a interação do Omni (REST). Puro, testado. */
+export function lerInteracaoVideo(j: OmniInteracao): EstadoVideo {
+  if (j?.error) return { pronto: true, erro: j.error.message || 'Falha no vídeo' };
+  const saida = (j?.steps || []).filter((s) => s.type === 'model_output').flatMap((s) => s.content || []);
+  const v = saida.find((c) => c.type === 'video');
+  if (v?.uri) return { pronto: true, url: v.uri };
+  if (v?.data) return { pronto: true, url: `data:${v.mime_type || 'video/mp4'};base64,${v.data}` };
+  const st = String(j?.status || '').toLowerCase();
+  if (['completed', 'failed', 'cancelled', 'incomplete'].includes(st)) {
+    const txt = saida.filter((c) => c.type === 'text').map((c) => c.text).join(' ').trim();
+    return { pronto: true, erro: txt || 'O Google não devolveu o vídeo (pode ter sido bloqueado pelo filtro de segurança).' };
+  }
+  return { pronto: false };
+}
+
+/** Link de download de um arquivo do Files API (precisa do x-goog-api-key). */
+export function urlDownloadVideo(uri: string): string {
+  return /\/v1beta\/files\/[\w-]+$/.test(uri) ? uri.replace('/v1beta/files/', '/download/v1beta/files/') + ':download?alt=media' : uri;
+}
+
 export async function iniciarVideo(p: PedidoVideo): Promise<{ operacao: string }> {
   if (simulando()) return { operacao: `simulado/${p.proporcao}/${Date.now()}` };
-  const { mimeType, base64 } = dividirDataUrl(p.foto);
-  const resp = await fetch(`${BASE}/models/${MODELO_VIDEO()}:predictLongRunning`, {
+  const resp = await fetch(`${BASE}/interactions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': chave() },
-    body: JSON.stringify({
-      instances: [{ prompt: p.prompt, image: { bytesBase64Encoded: base64, mimeType } }],
-      parameters: { aspectRatio: p.proporcao, durationSeconds: p.duracaoSeg },
-    }),
+    body: JSON.stringify(pedidoVideoOmni(p)),
   });
-  if (!resp.ok) throw new Error(`Veo ${resp.status}`);
-  const json = (await resp.json()) as { name?: string };
-  if (!json.name) throw new Error('Veo não devolveu a operação.');
-  return { operacao: json.name };
+  if (!resp.ok) throw new Error(`Omni ${resp.status}`);
+  const json = (await resp.json()) as { id?: string };
+  if (!json.id) throw new Error('Omni não devolveu o id do vídeo.');
+  return { operacao: `omni/${json.id}` };
 }
 
 export async function consultarVideo(operacao: string): Promise<EstadoVideo> {
@@ -115,24 +148,21 @@ export async function consultarVideo(operacao: string): Promise<EstadoVideo> {
     const proporcao = operacao.split('/')[1] === '1:1' ? '1:1' : '9:16';
     return { pronto: true, url: videoSimulado(proporcao) };
   }
-  const resp = await fetch(`${BASE}/${operacao}`, { headers: { 'x-goog-api-key': chave() } });
-  if (!resp.ok) return { pronto: true, erro: `Veo ${resp.status}` };
-  const json = (await resp.json()) as VeoOperacao;
-  if (!json.done) return { pronto: false };
-  if (json.error) return { pronto: true, erro: json.error.message || 'Falha no vídeo' };
-  const uri = json.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri;
-  if (!uri) return { pronto: true, erro: 'Vídeo sem arquivo (pode ter sido bloqueado pelo filtro de segurança).' };
-  // CONFIRMAR AO VIVO: baixar o arquivo com a chave e guardar no Storage da empresa (o uri expira).
-  return { pronto: true, url: uri };
+  const id = operacao.replace(/^omni\//, '');
+  if (!/^[\w-]+$/.test(id)) return { pronto: true, erro: 'Vídeo antigo (do Veo, que saiu do ar). Gere de novo.' };
+  const resp = await fetch(`${BASE}/interactions/${id}`, { headers: { 'x-goog-api-key': chave() } });
+  if (!resp.ok) return { pronto: true, erro: `Omni ${resp.status}` };
+  // CONFIRMAR AO VIVO: baixar o arquivo (urlDownloadVideo + chave) e guardar no Storage da empresa (o uri expira em ~2 dias).
+  return lerInteracaoVideo((await resp.json()) as OmniInteracao);
 }
 
 interface GeminiResposta {
   candidates?: { content?: { parts?: { text?: string; inlineData?: { mimeType?: string; data?: string } }[] } }[];
 }
-interface VeoOperacao {
-  done?: boolean;
+interface OmniInteracao {
+  status?: string;
   error?: { message?: string };
-  response?: { generateVideoResponse?: { generatedSamples?: { video?: { uri?: string } }[] } };
+  steps?: { type?: string; content?: { type?: string; uri?: string; data?: string; mime_type?: string; text?: string }[] }[];
 }
 
 // ---------- Modo simulado ----------

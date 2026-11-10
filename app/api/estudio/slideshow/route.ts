@@ -3,5 +3,5 @@ import { corpoJson, rota } from '../_contexto';
 
 export async function POST(req: Request) {
   const corpo = await corpoJson(req);
-  return rota(req, (c) => api.salvarSlideshow(c.d, c.quem, corpo));
+  return rota(req, (c) => api.salvarSlideshow(c.d, c.quem, corpo), { gera: true });
 }

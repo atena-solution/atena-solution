@@ -48,12 +48,12 @@ export default function CreditosPage() {
               const Icone = l.tipo === 'debito' ? ArrowUpRight : l.tipo === 'devolucao' ? RotateCcw : ArrowDownLeft;
               return (
                 <li key={l.id} className="px-5 py-3 flex items-center gap-3">
-                  <span className={cx('size-8 rounded-full grid place-items-center', l.tipo === 'debito' ? 'bg-[var(--e-cartao-2)] text-[var(--e-suave)]' : 'bg-[rgba(47,179,124,.14)] text-[#1F8A5E]')}><Icone className="size-4" aria-hidden /></span>
+                  <span className={cx('size-8 rounded-full grid place-items-center', l.tipo === 'debito' ? 'bg-[var(--e-cartao-2)] text-[var(--e-suave)]' : 'bg-sucesso/10 text-sucesso')}><Icone className="size-4" aria-hidden /></span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm truncate">{l.motivo}</div>
                     <div className="text-xs text-[var(--e-suave)]">{new Date(l.quando).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
-                  <div className={cx('e-mono text-sm', l.tipo === 'debito' ? '' : 'text-[#1F8A5E]')}>{l.tipo === 'debito' ? '−' : '+'}{l.valor}</div>
+                  <div className={cx('e-mono text-sm', l.tipo === 'debito' ? '' : 'text-sucesso')}>{l.tipo === 'debito' ? '−' : '+'}{l.valor}</div>
                   <div className="e-mono text-xs text-[var(--e-suave)] w-12 text-right">{l.saldoDepois}</div>
                 </li>
               );

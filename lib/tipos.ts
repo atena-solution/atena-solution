@@ -36,6 +36,8 @@ export interface Empresa {
   etapas?: EtapaFunil[];
   /** true quando o onboarding foi concluído. */
   onboardingConcluido?: boolean;
+  /** Passos do onboarding guiado (lib/planos/onboarding.ts → EstadoOnboarding). */
+  onboarding?: { feitos: string[]; pulados: string[]; atualizadoEm?: string };
   criadoEm: string;
 }
 

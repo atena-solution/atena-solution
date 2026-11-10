@@ -11,6 +11,8 @@ import { formatarTelefone, tempoRelativo } from '@/lib/ui/formato';
 import { NOME_STATUS, TOM_STATUS } from '@/lib/agenda/horarios';
 import { dataLocal, horaLocal } from '@/lib/agenda/fuso';
 import type { Agendamento, Atividade, Contato, Membro, Servico, TipoAtividade } from '@/lib/tipos';
+import { ConversaDoContato } from '../../atendimento/ConversaDoContato';
+import { BotaoGravarReuniao, ReunioesDoContato } from '../../coach/_componentes/contato';
 
 const ICONE_ATIVIDADE: Record<TipoAtividade, typeof StickyNote> = {
   mensagem: MessageCircle,
@@ -34,6 +36,9 @@ export function FichaContato({ id }: { id: string }) {
   const [novaEtiqueta, setNovaEtiqueta] = useState('');
   const etapas = etapasDaEmpresa(empresa?.etapas);
   const fuso = empresa?.fuso ?? 'America/Sao_Paulo';
+  const abas = empresa?.plano.abas ?? [];
+  const usaCoach = abas.includes('coach') && sessao?.papel !== 'atendente';
+  const usaAtendimento = abas.includes('atendimento');
 
   if (erro) return <Cartao><Vazio titulo="Contato não encontrado" descricao={erro} acao={<Link href="/contatos" className="text-sm text-acento">Voltar para contatos</Link>} /></Cartao>;
   if (!dados) return <div className="flex flex-col gap-4"><Esqueleto className="h-10 w-64" /><Esqueleto className="h-64 w-full" /></div>;
@@ -89,13 +94,14 @@ export function FichaContato({ id }: { id: string }) {
           <a href={`https://wa.me/${contato.telefone}`} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-borda bg-superficie px-4 text-sm font-medium hover:bg-superficie-2">
             <MessageCircle className="size-4" style={{ color: 'var(--aba-atendimento)' }} aria-hidden /> WhatsApp
           </a>
+          {usaCoach && <BotaoGravarReuniao contato={{ id: contato.id, nome: contato.nome, telefone: contato.telefone }} />}
           <Botao icone={<CalendarPlus className="size-4" />} onClick={() => router.push(`/agenda?novo=1&contato=${contato.id}`)}>
             Marcar horário
           </Botao>
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[340px_1fr]">
         <div className="flex flex-col gap-5">
           <Cartao>
             <CabecalhoCartao
@@ -177,6 +183,9 @@ export function FichaContato({ id }: { id: string }) {
               ))}
             </CorpoCartao>
           </Cartao>
+
+          {usaAtendimento && <ConversaDoContato contatoId={contato.id} telefone={contato.telefone} />}
+          {usaCoach && <ReunioesDoContato contatoId={contato.id} />}
 
           {(sessao?.papel === 'dono' || sessao?.papel === 'gestor') && (
             <Botao variante="fantasma" tamanho="p" icone={<Trash2 className="size-3.5" />} className="self-start text-erro" onClick={apagar}>

@@ -6,7 +6,7 @@ import type { LancamentoCredito, TipoCriacao } from './tipos';
 export const CUSTO_CREDITOS: Record<TipoCriacao, number> = {
   foto: 2,
   post: 2,
-  video: 10,
+  video: 25, // ~US$ 0,80 por vídeo de 8 s (Gemini Omni); 10 dava prejuízo no plano de 100 créditos
   slideshow: 0,
   legenda: 0, // legenda já vem junto com o post; avulsa também é grátis
   calendario: 0, // sugestão do mês é grátis; paga-se a arte de cada post

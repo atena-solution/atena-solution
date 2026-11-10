@@ -101,7 +101,7 @@ describe('papéis', () => {
     await empresa.PATCH(req(DONO, 'PATCH', { nome: 'Novo nome', plano: { abas: [], creditos: 99999 } }));
     const e = (await (await empresa.GET(req(DONO))).json()).empresa;
     expect(e.nome).toBe('Novo nome');
-    expect(e.plano.creditos).toBe(20);
+    expect(e.plano.creditos).toBe(120);
   });
 });
 
@@ -115,7 +115,8 @@ describe('contatos', () => {
     await contato.PATCH(req(ANA, 'PATCH', { etapa: 'em-conversa', etiquetas: ['VIP'] }), p({ id: c.id }));
     const f = await (await contato.GET(req(ANA), p({ id: c.id }))).json();
     expect(f.contato.etapa).toBe('em-conversa');
-    expect(f.atividades[0]).toMatchObject({ tipo: 'etapa', porUid: 'demo-ana' });
+    // criação e mudança de etapa podem cair no mesmo milissegundo → não depender da ordem
+    expect(f.atividades.find((a: { tipo: string }) => a.tipo === 'etapa')).toMatchObject({ tipo: 'etapa', porUid: 'demo-ana' });
   });
   it('importa CSV (simulação e de verdade)', async () => {
     const csv = 'nome;whatsapp\nAna;11 90000-0001\nBia;11 90000-0002\nRepetida;5511991234001\n';

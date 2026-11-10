@@ -252,3 +252,14 @@ export function segmentoDe(s: string): Segmento {
   if (/loja|varej|moda|roupa|calcad|acessor|ecommerce|e-commerce/.test(t)) return 'loja';
   return 'outro';
 }
+
+/** Resumo leve para o cartão do Início: saldo e quanto foi criado no mês (sem os arquivos). */
+export const resumoInicio = (d: Dependencias, q: Quem) =>
+  tratar(async () => {
+    const [saldo, criacoes] = await Promise.all([d.repo.saldo(q.empresaId), d.repo.listarCriacoes(q.empresaId)]);
+    const mes = d.agora().slice(0, 7);
+    const doMes = criacoes.filter((c) => c.empresaId === q.empresaId && c.criadoEm.startsWith(mes) && c.status !== 'falhou');
+    const porTipo = { foto: 0, post: 0, video: 0 } as Record<'foto' | 'post' | 'video', number>;
+    for (const c of doMes) if (c.tipo === 'foto' || c.tipo === 'post' || c.tipo === 'video') porTipo[c.tipo]++;
+    return ok({ saldo, criacoesMes: doMes.length, porTipo });
+  });
