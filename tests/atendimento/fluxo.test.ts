@@ -310,3 +310,22 @@ describe('áudio do cliente (junção com o Gemini)', () => {
     expect(JSON.stringify(ia.pedidos[0].mensagens)).toContain('tem horário amanhã à tarde?')
   })
 })
+
+describe('coexistência: dono responde pelo celular', () => {
+  const eco = (pnid: string, t: string, wamid: string) => ({ object: 'whatsapp_business_account', entry: [{ changes: [{ field: 'smb_message_echoes', value: {
+    metadata: { phone_number_id: pnid }, message_echoes: [{ from: '5511900000000', to: tel, id: wamid, timestamp: String(Math.floor(Date.now() / 1000)), type: 'text', text: { body: t } }],
+  } }] }] })
+  it('a mensagem entra como da equipe e a IA sai daquela conversa', async () => {
+    const amb = await ambiente(iaRoteirizada([]))
+    await receberWebhook(msg('PN1', 'oi, tem horário?'), amb.deps)
+    await receberWebhook(eco('PN1', 'Oi Carlos! Tenho às 15h', 'eco.1'), amb.deps)
+    const conv = (await amb.repo.listarConversas('e1'))[0]
+    expect(conv.modo).toBe('humano')
+    expect(conv.aguardandoDesde).toBeFalsy()
+    const ms = await amb.repo.mensagens('e1', conv.id, 50)
+    expect(ms.map((m) => m.de)).toEqual(['cliente', 'equipe'])
+    // eco repetido não duplica
+    await receberWebhook(eco('PN1', 'Oi Carlos! Tenho às 15h', 'eco.1'), amb.deps)
+    expect(await amb.repo.mensagens('e1', conv.id, 50)).toHaveLength(2)
+  })
+})

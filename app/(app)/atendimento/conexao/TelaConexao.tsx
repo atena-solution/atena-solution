@@ -7,6 +7,7 @@ import { Botao, Campo, Cartao, CabecalhoCartao, CorpoCartao, Esqueleto, Modal, S
 import { useDados, useSessao } from '@/lib/sessao'
 import { tempoRelativo } from '@/lib/ui/formato'
 import type { ModelosAprovados } from '@/lib/atendimento/tipos'
+import { ConectarMeta } from './ConectarMeta'
 
 interface Estado {
   conectado: boolean
@@ -18,6 +19,7 @@ interface Estado {
     wabaId: string
     token: string
     temAppSecret: boolean
+    coexistencia?: boolean
     numeroExibicao?: string
     nomeVerificado?: string
     conectadoEm: string
@@ -135,6 +137,7 @@ export function TelaConexao() {
                 <p className="text-xs text-texto-3">
                   Desde {tempoRelativo(c.conectadoEm)} · token {c.token}
                   {c.temAppSecret ? ' · app próprio' : ''}
+                  {c.coexistencia ? ' · junto com o app do celular' : ''}
                 </p>
               </div>
             </div>
@@ -147,6 +150,9 @@ export function TelaConexao() {
         </Cartao>
       )}
 
+      {podeEditar && <ConectarMeta simulado={dados.simulado} aoConectar={recarregar} />}
+
+      <p className="-mb-2 text-sm font-medium text-texto-2">Conexão manual (para quem já tem a API da Meta)</p>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Cartao>
           <CabecalhoCartao titulo="Passo a passo" descricao="Leva uns 15 minutos. Faça uma vez só." />

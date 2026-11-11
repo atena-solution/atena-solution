@@ -2,7 +2,7 @@
 // Tudo recebe as dependências (repo, IA, canal) para dar pra testar sem internet.
 
 import { medirIA, type ClienteIA } from '@/lib/integracoes/claude'
-import type { ConteudoEnvio, Credenciais, EventoMensagem, ResultadoEnvio } from '@/lib/integracoes/whatsapp'
+import type { ConteudoEnvio, Credenciais, EventoEco, EventoMensagem, ResultadoEnvio } from '@/lib/integracoes/whatsapp'
 import { lerWebhook } from '@/lib/integracoes/whatsapp'
 import type { RepoAtendimento } from './repositorio'
 import { ETAPA, type Agendamento, type Autor, type Contato, type Conversa, type Mensagem, type TipoMensagem } from './tipos'
@@ -95,10 +95,39 @@ export async function receberWebhook(corpo: unknown, deps: Deps): Promise<Result
       saida.ignorados.push({ motivo: 'repetida', wamid: ev.wamid })
       continue
     }
+    if (ev.tipo === 'eco') {
+      await receberEco(empresaId, ev, deps)
+      continue
+    }
     const item = await receberMensagem(empresaId, ev, deps)
     if (item) saida.itens.push(item)
   }
   return saida
+}
+
+/**
+ * Coexistência: o dono respondeu pelo app WhatsApp Business do celular. A mensagem entra na conversa como da equipe
+ * e a conversa passa pro modo humano — a IA não fala por cima de quem já está atendendo.
+ */
+async function receberEco(empresaId: string, ev: EventoEco, deps: Deps) {
+  const repo = deps.repo
+  const agoraISO = ev.em || deps.agora().toISOString()
+  const contato = await repo.contatoPorTelefone(empresaId, ev.para)
+  if (!contato) return
+  const conversa = await repo.conversaDoContato(empresaId, contato.id)
+  if (!conversa) return
+  const texto = ev.texto || (ev.tipoMsg === 'audio' ? '🎤 Áudio' : ev.tipoMsg === 'imagem' ? '📷 Foto' : '')
+  await repo.adicionarMensagem(empresaId, { conversaId: conversa.id, de: 'equipe', tipo: TIPO[ev.tipoMsg], texto, wamid: ev.wamid, porUid: 'celular', em: agoraISO, status: 'enviada' })
+  await repo.atualizarConversa(empresaId, conversa.id, {
+    modo: 'humano',
+    houveHumano: true,
+    precisaHumano: false,
+    iaDigitando: false,
+    aguardandoDesde: null,
+    naoLidas: 0,
+    ultimaRespostaEm: agoraISO,
+    ultimaMensagem: { texto: resumo(texto), de: 'equipe', em: agoraISO },
+  })
 }
 
 async function receberMensagem(empresaId: string, ev: EventoMensagem, deps: Deps) {

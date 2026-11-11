@@ -30,7 +30,7 @@ describe('webhook da Meta', () => {
       } }] }],
     }
     const ev = lerWebhook(corpo)
-    expect(ev.map((e) => (e.tipo === 'mensagem' ? e.tipoMsg : e.status))).toEqual(['texto', 'audio', 'imagem', 'botao', 'read'])
+    expect(ev.map((e) => (e.tipo === 'mensagem' ? e.tipoMsg : e.tipo === 'status' ? e.status : 'eco'))).toEqual(['texto', 'audio', 'imagem', 'botao', 'read'])
     expect(ev[0]).toMatchObject({ phoneNumberId: 'PN1', wamid: 'w1', de: '5511988887777', nome: 'Carlos', texto: 'oi' })
     expect(ev[1]).toMatchObject({ midiaId: 'm1' })
     expect(ev[3]).toMatchObject({ texto: 'Confirmar' })
@@ -73,3 +73,17 @@ describe('assinatura do webhook por empresa', () => {
     expect((await conferir('PN2', 'x')).ok).toBe(false) // sem segredo nenhum em produção: recusa
   })
 })
+
+describe('coexistência (app WhatsApp Business no celular)', () => {
+  it('lê o eco do que o dono mandou pelo celular', () => {
+    const ev = lerWebhook({ object: 'whatsapp_business_account', entry: [{ id: 'W', changes: [{ field: 'smb_message_echoes', value: {
+      metadata: { phone_number_id: 'PN1' },
+      message_echoes: [{ from: '5511900000000', to: '5511988887777', id: 'e1', timestamp: '1793620800', type: 'text', text: { body: 'já te respondo' } }],
+    } }] }] })
+    expect(ev).toEqual([{ tipo: 'eco', phoneNumberId: 'PN1', wamid: 'e1', para: '5511988887777', em: new Date(1793620800000).toISOString(), tipoMsg: 'texto', texto: 'já te respondo' }])
+  })
+  it('ignora history e outros campos', () => {
+    expect(lerWebhook({ object: 'whatsapp_business_account', entry: [{ changes: [{ field: 'history', value: { metadata: { phone_number_id: 'PN1' } } }] }] })).toEqual([])
+  })
+})
+

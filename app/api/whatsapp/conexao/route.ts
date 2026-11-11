@@ -22,8 +22,9 @@ export const GET = rota(undefined, async (req, { sessao }) => {
   } catch {
     token = '(não foi possível ler — conecte de novo)'
   }
-  const { tokenCifrado: _t, appSecretCifrado, ...pub } = c
+  const { tokenCifrado: _t, appSecretCifrado, pinCifrado: _p, ...pub } = c
   void _t
+  void _p
   const podeVer = sessao.papel === 'dono' || sessao.papel === 'gestor'
   return Response.json({
     conectado: true,

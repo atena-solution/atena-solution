@@ -124,6 +124,12 @@ export interface ConexaoWhatsApp {
   nomeVerificado?: string
   conectadoEm: string
   modelos: ModelosAprovados
+  /** 'meta' = conectado pelo botão (Cadastro Incorporado); sem campo = manual. */
+  origem?: 'manual' | 'meta'
+  /** Número continua no app WhatsApp Business do celular (coexistência). */
+  coexistencia?: boolean
+  /** PIN de 2 etapas do número registrado pela Atena (cifrado; fica em segredos). */
+  pinCifrado?: string
 }
 
 export interface ItemFila {

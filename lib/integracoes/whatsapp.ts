@@ -73,17 +73,39 @@ export interface EventoStatus {
   erro?: string
 }
 
-export type EventoWhatsApp = EventoMensagem | EventoStatus
+/** Mensagem que o DONO mandou pelo app WhatsApp Business no celular (coexistência, webhook smb_message_echoes). */
+export interface EventoEco {
+  tipo: 'eco'
+  phoneNumberId: string
+  wamid: string
+  para: string // telefone do cliente
+  em: string
+  tipoMsg: 'texto' | 'audio' | 'imagem' | 'botao' | 'outro'
+  texto: string
+}
+
+export type EventoWhatsApp = EventoMensagem | EventoStatus | EventoEco
 
 export function lerWebhook(corpo: any): EventoWhatsApp[] {
   const eventos: EventoWhatsApp[] = []
   if (!corpo || corpo.object !== 'whatsapp_business_account' || !Array.isArray(corpo.entry)) return eventos
   for (const entry of corpo.entry) {
     for (const change of entry?.changes ?? []) {
-      if (change?.field !== 'messages') continue
-      const v = change.value ?? {}
+      const v = change?.value ?? {}
       const phoneNumberId: string | undefined = v.metadata?.phone_number_id
       if (!phoneNumberId) continue
+      // Coexistência: o que o dono responde pelo app do celular chega como eco. Formato da doc (10/11/2026):
+      // value.message_echoes[{ from (número da empresa), to (cliente), id, timestamp, type, text|image|audio }]. CONFIRMAR AO VIVO
+      if (change?.field === 'smb_message_echoes') {
+        for (const m of v.message_echoes ?? []) {
+          if (!m?.id || !m?.to) continue
+          const tipoMsg = m.type === 'text' ? 'texto' : m.type === 'audio' ? 'audio' : m.type === 'image' ? 'imagem' : 'outro'
+          const texto = m.type === 'text' ? m.text?.body ?? '' : m.type === 'image' ? m.image?.caption ?? '' : ''
+          eventos.push({ tipo: 'eco', phoneNumberId, wamid: m.id, para: m.to, em: new Date(Number(m.timestamp) * 1000 || Date.now()).toISOString(), tipoMsg, texto })
+        }
+        continue
+      }
+      if (change?.field !== 'messages') continue
       const nomes = new Map<string, string>()
       for (const c of v.contacts ?? []) if (c?.wa_id) nomes.set(c.wa_id, c.profile?.name)
       for (const m of v.messages ?? []) {
